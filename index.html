@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Puls i sanntid</title>
+
+    style.css
+    manifest.json
+
+    https://cdn.jsdelivr.net/npm/chart.js
+</head>
+<body>
+
+    <header>
+        <h1>Pulsmåler</h1>
+    </header>
+
+    <main>
+        <button id="connectBtn">🔗 Koble til pulsbelte</button>
+
+        <div id="pulseBox">
+            <div class="label">Puls</div>
+            <div id="pulseValue">--</div>
+        </div>
+
+        <canvas id="hrChart"></canvas>
+    </main>
+
+    <script src="app.js"></script>
+
+    <script>
+        // Registrer service worker (PWA)
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("sw.js");
+        }
+    </script>
+
+</body>
+</html>
