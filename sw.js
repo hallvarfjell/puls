@@ -1,7 +1,7 @@
 
-/* sw.js – HR app (offline-first) */
+/* sw.js – HR app (offline-first + update banner flow) */
 
-const CACHE_VERSION = "hr-offline-v1.3.0";  // <-- bump hver gang du endrer filer
+const CACHE_VERSION = "hr-offline-v1.4.0";
 const CACHE_NAME = `cache-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -10,7 +10,6 @@ const PRECACHE_URLS = [
   "./style.css",
   "./app.js",
   "./sw.js",
-
   "./icons/favicon/favicon-96x96.png",
   "./icons/favicon/favicon.svg",
   "./icons/favicon/favicon.ico",
@@ -22,7 +21,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(PRECACHE_URLS);
-    self.skipWaiting();
+    // NOTE: no skipWaiting here; we want user-controlled update via banner
   })());
 });
 
@@ -34,6 +33,14 @@ self.addEventListener("activate", (event) => {
   })());
 });
 
+// Listen for "skip waiting" command from the page
+self.addEventListener("message", (event) => {
+  if (!event.data) return;
+  if (event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -41,6 +48,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
 
+  // SPA-like navigation: return cached index.html
   if (req.mode === "navigate") {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
