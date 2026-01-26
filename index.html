@@ -16,7 +16,6 @@
   <meta name="apple-mobile-web-app-title" content="HR" />
   <link rel="manifest" href="./icons/favicon/site.webmanifest" />
 
-  <!-- Styles -->
   <link rel="stylesheet" href="./style.css" />
 </head>
 
@@ -32,6 +31,7 @@
       <div class="card">
         <div class="topRow">
           <button id="connectBtn" class="primaryBtn">🔗 Koble til pulsbelte</button>
+
           <div class="liveBox">
             <div class="liveLabel">Puls nå</div>
             <div id="pulseValue" class="liveValue">--</div>
@@ -58,7 +58,7 @@
       </div>
     </section>
 
-    <!-- RIGHT: Dummy timer + Drag stats + Zones -->
+    <!-- RIGHT: Timer + Drag stats + Zones -->
     <section class="col colRight">
       <div class="card">
         <div class="cardTitle">Dummy‑timer (test statistikk)</div>
@@ -112,7 +112,7 @@
 
       <div class="card">
         <div class="cardTitle">Drag-statistikk</div>
-        <div class="subHint">Makspuls = høyeste 30‑sekunders snitt per drag</div>
+        <div class="subHint">Makspuls = snitt i høyeste 30s-periode per drag</div>
         <div id="lapStats" class="mono statsText">—</div>
       </div>
 
@@ -192,14 +192,13 @@
         </div>
 
         <p class="footnote">
-          Eksporten er enkel JSON (samples + drag). Dette kan flyttes rett inn i intervalltidtageren senere.
+          Eksporten er enkel JSON (samples + drag + soner). Dette kan flyttes rett inn i intervalltidtageren.
         </p>
       </div>
     </section>
   </main>
 
-  <script src="./app.js"></script>
-
+  <script src="./app.js" defer></script>
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(console.warn);
