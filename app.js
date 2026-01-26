@@ -1,8 +1,8 @@
 
-/* app.js - BLE HRM + chart (no streaming plugin) */
+/* app.js - BLE HRM + chart (no streaming plugin) + iOS/Safari guidance */
 
 const HR_WINDOW_MS = 10 * 60 * 1000; // 10 min
-const MAX_POINTS = 10 * 60 * 2;      // f.eks. opptil ~2 Hz i 10 min (1200 punkter)
+const MAX_POINTS = 10 * 60 * 2;      // ~2 Hz in 10 min
 
 let hrChart = null;
 let dataPoints = []; // {x: ms, y: bpm}
@@ -13,8 +13,10 @@ let characteristic = null;
 let lastHrTimestamp = 0;
 let lastChartUpdate = 0;
 
+function $(id) { return document.getElementById(id); }
+
 function setStatus(text) {
-  document.getElementById("statusText").textContent = text;
+  $("statusText").textContent = text;
 }
 
 function nowMs() {
@@ -27,28 +29,42 @@ function formatSecondsAgo(msAgo) {
 }
 
 /**
- * Format tick labels for x axis using relative time (mm:ss from "now")
- * x is absolute ms timestamp, but we show "min:sec ago"
+ * x is absolute ms timestamp, show "-mm:ss" (time ago)
  */
 function formatTickLabel(xValue) {
   const diff = nowMs() - xValue; // ms ago
   const totalSec = Math.max(0, Math.floor(diff / 1000));
   const mm = Math.floor(totalSec / 60);
   const ss = totalSec % 60;
-  // show time ago as "-mm:ss"
   return `-${mm}:${String(ss).padStart(2, "0")}`;
 }
 
+function isIOS() {
+  // iPadOS 13+ reports as MacIntel with touch points
+  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isSafari() {
+  // On iOS all browsers use WebKit; but this helps messaging in normal Safari
+  const ua = navigator.userAgent;
+  const isAppleWebKit = /AppleWebKit/.test(ua);
+  const isChrome = /CriOS/.test(ua);
+  const isFirefox = /FxiOS/.test(ua);
+  const isEdge = /EdgiOS/.test(ua);
+  return isAppleWebKit && !isChrome && !isFirefox && !isEdge;
+}
+
 function setupChart() {
-  const ctx = document.getElementById("hrChart").getContext("2d");
+  const ctx = $("hrChart").getContext("2d");
 
   hrChart = new Chart(ctx, {
     type: "line",
     data: {
       datasets: [{
         label: "Puls (BPM)",
-        data: [],             // will be [{x, y}, ...]
-        parsing: false,       // important: we're passing x/y objects
+        data: [],
+        parsing: false,          // using {x,y}
         borderColor: "#27f5a4",
         borderWidth: 2,
         pointRadius: 0,
@@ -115,7 +131,7 @@ async function connect() {
   } catch (err) {
     console.error(err);
     setStatus("Tilkobling feilet");
-    alert("Kunne ikke koble til pulsbelte. Sjekk at du bruker Chrome/Edge på Android og at Bluetooth er på.");
+    alert("Kunne ikke koble til pulsbelte. Sjekk at Bluetooth er på, og bruk Chrome/Edge på Android.");
   }
 }
 
@@ -124,9 +140,6 @@ function onDisconnected() {
 }
 
 function parseHeartRate(value) {
-  // Heart Rate Measurement characteristic spec:
-  // byte0 = flags
-  // if flags & 0x01 => HR is uint16 at bytes 1-2, else uint8 at byte1
   const flags = value.getUint8(0);
   const is16Bit = (flags & 0x01) !== 0;
   return is16Bit ? value.getUint16(1, true) : value.getUint8(1);
@@ -135,20 +148,16 @@ function parseHeartRate(value) {
 function pruneOldPoints(now) {
   const cutoff = now - HR_WINDOW_MS;
 
-  // Remove old points
   while (dataPoints.length && dataPoints[0].x < cutoff) {
     dataPoints.shift();
   }
-
-  // Also cap absolute count for safety
   if (dataPoints.length > MAX_POINTS) {
     dataPoints = dataPoints.slice(dataPoints.length - MAX_POINTS);
   }
 }
 
 function updateChartThrottled(now) {
-  // Throttle chart updates to reduce CPU (e.g. 4 fps)
-  if (now - lastChartUpdate < 250) return;
+  if (now - lastChartUpdate < 250) return; // ~4 fps max
   lastChartUpdate = now;
 
   hrChart.data.datasets[0].data = dataPoints;
@@ -156,34 +165,56 @@ function updateChartThrottled(now) {
 }
 
 function handleHeartRate(event) {
-  const value = event.target.value;
-  const hr = parseHeartRate(value);
-
+  const hr = parseHeartRate(event.target.value);
   const now = nowMs();
+
   lastHrTimestamp = now;
+  $("pulseValue").textContent = hr;
 
-  // UI
-  document.getElementById("pulseValue").textContent = hr;
-
-  // Data
   dataPoints.push({ x: now, y: hr });
   pruneOldPoints(now);
-
-  // Chart
   updateChartThrottled(now);
 }
 
 // Update "seconds since last HR"
 setInterval(() => {
-  const el = document.getElementById("lastSeen");
-  if (!lastHrTimestamp) {
-    el.textContent = "--";
-  } else {
-    el.textContent = formatSecondsAgo(nowMs() - lastHrTimestamp);
-  }
+  const el = $("lastSeen");
+  if (!lastHrTimestamp) el.textContent = "--";
+  else el.textContent = formatSecondsAgo(nowMs() - lastHrTimestamp);
 }, 500);
 
-// Init
-document.getElementById("connectBtn").addEventListener("click", connect);
-setupChart();
-setStatus("Ikke tilkoblet");
+function showNoBluetoothGuidance() {
+  const btn = $("connectBtn");
+  btn.disabled = true;
+
+  // Tailored messaging for iOS Safari
+  if (isIOS()) {
+    if (isSafari()) {
+      setStatus("iOS Safari støtter ikke Bluetooth-pulsbelter i web/PWA. Bruk Android (Chrome/Edge), eller et Android-nettbrett.");
+    } else {
+      setStatus("iOS støtter normalt ikke Web Bluetooth i vanlige nettlesere. Bruk Android (Chrome/Edge), eller vurder en spesialnettleser med WebBLE-støtte.");
+    }
+  } else {
+    setStatus("Denne nettleseren støtter ikke Web Bluetooth. Prøv Chrome/Edge på Android.");
+  }
+}
+
+function initCapabilityCheck() {
+  // Web Bluetooth capability
+  if (!("bluetooth" in navigator)) {
+    showNoBluetoothGuidance();
+    return;
+  }
+
+  // Supported: set normal status and enable button
+  $("connectBtn").disabled = false;
+  setStatus("Ikke tilkoblet");
+}
+
+function init() {
+  setupChart();
+  $("connectBtn").addEventListener("click", connect);
+  initCapabilityCheck();
+}
+
+init();
