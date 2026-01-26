@@ -1,7 +1,7 @@
 
 /* sw.js – HR app (offline-first) */
 
-const CACHE_VERSION = "hr-offline-v1.1.0";
+const CACHE_VERSION = "hr-offline-v1.2.0";
 const CACHE_NAME = `cache-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -18,7 +18,6 @@ const PRECACHE_URLS = [
   "./icons/favicon/site.webmanifest",
 ];
 
-// Install: pre-cache everything
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
@@ -27,7 +26,6 @@ self.addEventListener("install", (event) => {
   })());
 });
 
-// Activate: remove old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -36,22 +34,18 @@ self.addEventListener("activate", (event) => {
   })());
 });
 
-// Cache-first fetch for same-origin
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // SPA-like navigation: return cached index.html
   if (req.mode === "navigate") {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match("./index.html");
       if (cached) return cached;
-      // Fallback attempt
       try {
         const fresh = await fetch(req);
         cache.put("./index.html", fresh.clone());
@@ -64,7 +58,6 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (!sameOrigin) {
-    // We don't depend on CDN anymore, so simplest: network then cache if possible, else ignore
     event.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
