@@ -1,7 +1,7 @@
 
 /* sw.js – HR app (offline-first) */
 
-const CACHE_VERSION = "hr-offline-v1.2.0";
+const CACHE_VERSION = "hr-offline-v1.3.0";  // <-- bump hver gang du endrer filer
 const CACHE_NAME = `cache-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -46,6 +46,7 @@ self.addEventListener("fetch", (event) => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match("./index.html");
       if (cached) return cached;
+
       try {
         const fresh = await fetch(req);
         cache.put("./index.html", fresh.clone());
