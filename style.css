@@ -1,0 +1,49 @@
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #111;
+    color: white;
+}
+
+header {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.4rem;
+    background: #222;
+}
+
+main {
+    padding: 20px;
+}
+
+#connectBtn {
+    width: 100%;
+    padding: 18px;
+    font-size: 1.2rem;
+    border: none;
+    background: #0078ff;
+    color: white;
+    border-radius: 8px;
+}
+
+#pulseBox {
+    margin-top: 25px;
+    text-align: center;
+}
+
+#pulseBox .label {
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+
+#pulseValue {
+    font-size: 3.5rem;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+canvas {
+    margin-top: 30px;
+    width: 100%;
+}
