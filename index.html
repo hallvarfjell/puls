@@ -18,18 +18,16 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="./style.css" />
-
-  <!-- Chart.js (UMD build) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
   <header class="appHeader">
     <div class="title">HR</div>
-    <div class="subtitle">Sanntid + siste 10 minutter</div>
+    <div class="subtitle">Sanntid + siste 10 minutter (offline)</div>
   </header>
 
   <main class="appMain">
+    <!-- Connection / Live -->
     <section class="card">
       <button id="connectBtn" class="primaryBtn">🔗 Koble til pulsbelte</button>
 
@@ -46,24 +44,107 @@
           <div class="metricHint">sek siden</div>
         </div>
       </div>
+
+      <div id="iosNotice" class="notice hidden"></div>
     </section>
 
+    <!-- Chart -->
     <section class="card">
       <div class="cardTitle">Puls – siste 10 minutter</div>
       <div class="chartWrap">
-        <canvas id="hrChart"></canvas>
+        <canvas id="hrCanvas" width="900" height="500"></canvas>
       </div>
+      <div class="hintRow">
+        <span class="pill">Grønn: puls</span>
+        <span class="pill pill2">Viser siste 10 min</span>
+      </div>
+    </section>
+
+    <!-- Dummy timer + stats -->
+    <section class="card">
+      <div class="cardTitle">Dummy‑timer (test statistikk)</div>
+
+      <div class="timerGrid">
+        <div class="timerBox">
+          <div class="timerLabel">Tid</div>
+          <div id="timerClock" class="timerClock">00:00</div>
+          <div id="timerPhase" class="timerPhase">Stoppet</div>
+        </div>
+
+        <div class="timerControls">
+          <div class="fieldRow">
+            <label class="field">
+              <span>Arbeid (s)</span>
+              <input id="workSec" type="number" min="5" step="5" value="60" />
+            </label>
+            <label class="field">
+              <span>Pause (s)</span>
+              <input id="restSec" type="number" min="0" step="5" value="30" />
+            </label>
+            <label class="field">
+              <span>Reps</span>
+              <input id="reps" type="number" min="1" step="1" value="6" />
+            </label>
+          </div>
+
+          <div class="fieldRow">
+            <label class="field">
+              <span>HRmax</span>
+              <input id="hrMax" type="number" min="120" step="1" value="190" />
+            </label>
+            <label class="field">
+              <span>Simuler puls</span>
+              <select id="simMode">
+                <option value="auto" selected>Auto (hvis ikke BLE)</option>
+                <option value="force">Alltid simulér</option>
+                <option value="off">Aldri simulér</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="btnRow">
+            <button id="startBtn" class="secondaryBtn">▶ Start</button>
+            <button id="stopBtn" class="secondaryBtn danger" disabled>■ Stopp</button>
+            <button id="resetBtn" class="secondaryBtn ghost">↺ Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="statsGrid">
+        <div class="statCard">
+          <div class="statTitle">Økt – totalt</div>
+          <div id="overallStats" class="mono smallText">—</div>
+        </div>
+
+        <div class="statCard">
+          <div class="statTitle">Drag – per rep</div>
+          <div id="lapStats" class="mono smallText">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="btnRow">
+        <button id="exportBtn" class="secondaryBtn ghost">⤓ Eksporter JSON</button>
+        <button id="clearBtn" class="secondaryBtn ghost">🧹 Tøm data</button>
+      </div>
+
+      <p class="footnote">
+        Tips: Kjør dummy‑timeren uten BLE for å verifisere statistikken. Når det sitter, slår du på BLE og får ekte data inn i samme pipeline.
+      </p>
     </section>
   </main>
 
-  <!-- App logic -->
   <script src="./app.js"></script>
 
   <script>
-    // Register service worker (PWA)
+    // Register service worker (PWA/offline)
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(console.warn);
     }
   </script>
 </body>
 </html>
+``
