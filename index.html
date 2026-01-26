@@ -1,55 +1,69 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="no">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Puls i sanntid</title>
+  <title>HR</title>
+  <meta name="theme-color" content="#0b0f14" />
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
+  <!-- Favicons / App icons (fra deg) -->
+  <link rel="icon" type="image/png" href="/icons/favicon/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon/favicon.svg" />
+  <link rel="shortcut icon" href="/icons/favicon/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="HR" />
+  <link rel="manifest" href="/icons/favicon/site.webmanifest" />
 
-    <!-- PWA manifest -->
-    <link rel="manifest" href="manifest.json">
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css" />
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/icons/favicon/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/icons/favicon/favicon.svg" />
-    <link rel="shortcut icon" href="/icons/favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/favicon/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-title" content="HR" />
-    <link rel="manifest" href="/icons/favicon/site.webmanifest" />
-
+  <!-- Chart.js (UMD build) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
+  <header class="appHeader">
+    <div class="title">HR</div>
+    <div class="subtitle">Sanntid + siste 10 minutter</div>
+  </header>
 
-    <header>
-        <h1>Pulsmåler</h1>
-    </header>
+  <main class="appMain">
+    <section class="card">
+      <button id="connectBtn" class="primaryBtn">🔗 Koble til pulsbelte</button>
 
-    <main>
-        <button id="connectBtn">🔗 Koble til pulsbelte</button>
-
-        <div id="pulseBox">
-            <div class="label">Puls</div>
-            <div id="pulseValue">--</div>
+      <div class="row">
+        <div class="metric">
+          <div class="metricLabel">Puls nå</div>
+          <div id="pulseValue" class="metricValue">--</div>
+          <div id="statusText" class="statusText">Ikke tilkoblet</div>
         </div>
 
+        <div class="metric small">
+          <div class="metricLabel">Siste</div>
+          <div id="lastSeen" class="metricValueSmall">--</div>
+          <div class="metricHint">sek siden</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="cardTitle">Puls – siste 10 minutter</div>
+      <div class="chartWrap">
         <canvas id="hrChart"></canvas>
-    </main>
+      </div>
+    </section>
+  </main>
 
-    <script src="app.js"></script>
+  <!-- App logic -->
+  <script src="./app.js"></script>
 
-    <script>
-        // Registrer service worker (PWA)
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("sw.js");
-        }
-    </script>
-
+  <script>
+    // Register service worker (PWA)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(console.warn);
+    }
+  </script>
 </body>
 </html>
