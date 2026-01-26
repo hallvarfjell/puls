@@ -21,8 +21,25 @@
 
 <body>
   <header class="appHeader">
-    <div class="title">HR</div>
-    <div class="subtitle">Nettbrett (landskap) · Offline · Siste 15 min graf</div>
+    <!-- UPDATE BANNER (hidden until update available) -->
+    <div id="updateBanner" class="updateBanner hidden">
+      <div class="updateBannerText">
+        <div class="updateTitle">Ny versjon tilgjengelig</div>
+        <div class="updateSub">Trykk “Oppdater” for å laste siste versjon.</div>
+      </div>
+      <div class="updateActions">
+        <button id="updateNowBtn" class="updateBtn">Oppdater</button>
+        <button id="updateLaterBtn" class="updateBtn ghost">Senere</button>
+      </div>
+    </div>
+
+    <div class="titleRow">
+      <div>
+        <div class="title">HR</div>
+        <div class="subtitle">Nettbrett (landskap) · Offline · Puls + fart + resultater</div>
+      </div>
+      <div class="versionTag" id="versionTag">v—</div>
+    </div>
   </header>
 
   <main class="dashboard">
@@ -30,20 +47,33 @@
     <section class="col colLeft">
       <div class="card">
         <div class="topRow">
-          <button id="connectBtn" class="primaryBtn">🔗 Koble til pulsbelte</button>
+          <button id="connectBtn" class="primaryBtn">Koble til pulsbelte</button>
 
           <div class="liveBox">
-            <div class="liveLabel">Puls nå</div>
-            <div id="pulseValue" class="liveValue">--</div>
-            <div class="liveMeta">
-              <span id="statusText">Laster…</span>
-              <span class="dot">•</span>
-              <span><span id="lastSeen">--</span> s siden</span>
+            <div class="liveGrid">
+              <div>
+                <div class="liveLabel">Puls nå</div>
+                <div id="pulseValue" class="liveValue">--</div>
+                <div class="liveMeta">
+                  <span id="statusText">Laster…</span>
+                  <span class="dot">•</span>
+                  <span><span id="lastSeen">--</span> s siden</span>
+                </div>
+              </div>
+
+              <div class="speedBox">
+                <button id="treadmillBtn" class="miniBtn">Mølle: Koble til</button>
+                <div class="speedNow">
+                  <div class="speedLabel">Fart nå</div>
+                  <div id="speedNow" class="speedValue">0.0</div>
+                  <div class="speedUnit">km/t</div>
+                </div>
+              </div>
             </div>
+
+            <div id="iosNotice" class="notice hidden"></div>
           </div>
         </div>
-
-        <div id="iosNotice" class="notice hidden"></div>
       </div>
 
       <div class="card">
@@ -58,10 +88,10 @@
       </div>
     </section>
 
-    <!-- RIGHT: Timer + Drag stats + Zones -->
+    <!-- RIGHT: Timer + Drag stats + Zones + Sessions -->
     <section class="col colRight">
       <div class="card">
-        <div class="cardTitle">Dummy‑timer (test statistikk)</div>
+        <div class="cardTitle">Dummy‑timer</div>
 
         <div class="timerPanel">
           <div class="timerBig">
@@ -71,7 +101,11 @@
           </div>
 
           <div class="timerInputs">
-            <div class="grid3">
+            <div class="grid4">
+              <label class="field">
+                <span>Oppvarming (s)</span>
+                <input id="warmupSec" type="number" min="0" step="10" value="0" />
+              </label>
               <label class="field">
                 <span>Arbeid (s)</span>
                 <input id="workSec" type="number" min="5" step="5" value="60" />
@@ -81,12 +115,16 @@
                 <input id="restSec" type="number" min="0" step="5" value="30" />
               </label>
               <label class="field">
-                <span>Reps</span>
-                <input id="reps" type="number" min="1" step="1" value="6" />
+                <span>Nedjogg (s)</span>
+                <input id="cooldownSec" type="number" min="0" step="10" value="0" />
               </label>
             </div>
 
-            <div class="grid2">
+            <div class="grid3">
+              <label class="field">
+                <span>Reps</span>
+                <input id="reps" type="number" min="1" step="1" value="6" />
+              </label>
               <label class="field">
                 <span>Simuler puls</span>
                 <select id="simMode">
@@ -97,14 +135,14 @@
               </label>
               <label class="field">
                 <span>Notat</span>
-                <input id="note" type="text" placeholder="(valgfritt) økt-notat" />
+                <input id="note" type="text" placeholder="(valgfritt)" />
               </label>
             </div>
 
             <div class="btnRow">
-              <button id="startBtn" class="secondaryBtn">▶ Start</button>
-              <button id="stopBtn" class="secondaryBtn danger" disabled>■ Stopp</button>
-              <button id="resetBtn" class="secondaryBtn ghost">↺ Reset</button>
+              <button id="startBtn" class="secondaryBtn">Start</button>
+              <button id="stopBtn" class="secondaryBtn danger" disabled>Stopp</button>
+              <button id="resetBtn" class="secondaryBtn ghost">Reset</button>
             </div>
           </div>
         </div>
@@ -118,91 +156,100 @@
 
       <div class="card">
         <div class="cardTitle">Pulssoner</div>
-        <div class="subHint">Legg inn BPM‑grenser (S1..S5). S0 er under S1.</div>
+        <div class="subHint">BPM‑grenser (S1..S5). S0 er under S1.</div>
 
         <div class="zonesInputs">
           <div class="grid5">
-            <label class="field small">
-              <span>S1 ≥</span>
-              <input id="z1" type="number" min="0" step="1" value="110" />
-            </label>
-            <label class="field small">
-              <span>S2 ≥</span>
-              <input id="z2" type="number" min="0" step="1" value="130" />
-            </label>
-            <label class="field small">
-              <span>S3 ≥</span>
-              <input id="z3" type="number" min="0" step="1" value="150" />
-            </label>
-            <label class="field small">
-              <span>S4 ≥</span>
-              <input id="z4" type="number" min="0" step="1" value="165" />
-            </label>
-            <label class="field small">
-              <span>S5 ≥</span>
-              <input id="z5" type="number" min="0" step="1" value="180" />
-            </label>
+            <label class="field small"><span>S1 ≥</span><input id="z1" type="number" min="0" step="1" value="110" /></label>
+            <label class="field small"><span>S2 ≥</span><input id="z2" type="number" min="0" step="1" value="130" /></label>
+            <label class="field small"><span>S3 ≥</span><input id="z3" type="number" min="0" step="1" value="150" /></label>
+            <label class="field small"><span>S4 ≥</span><input id="z4" type="number" min="0" step="1" value="165" /></label>
+            <label class="field small"><span>S5 ≥</span><input id="z5" type="number" min="0" step="1" value="180" /></label>
           </div>
 
           <div class="btnRow">
-            <button id="applyZonesBtn" class="secondaryBtn ghost">↻ Oppdater soner</button>
+            <button id="applyZonesBtn" class="secondaryBtn ghost">Oppdater soner</button>
           </div>
         </div>
 
         <div class="divider"></div>
 
         <div class="zoneChart">
-          <div class="zoneRow">
-            <div class="zoneLabel">S0</div>
-            <div class="zoneBarWrap"><div id="barS0" class="zoneBar s0"></div></div>
-            <div id="timeS0" class="zoneTime">—</div>
-          </div>
-          <div class="zoneRow">
-            <div class="zoneLabel">S1</div>
-            <div class="zoneBarWrap"><div id="barS1" class="zoneBar s1"></div></div>
-            <div id="timeS1" class="zoneTime">—</div>
-          </div>
-          <div class="zoneRow">
-            <div class="zoneLabel">S2</div>
-            <div class="zoneBarWrap"><div id="barS2" class="zoneBar s2"></div></div>
-            <div id="timeS2" class="zoneTime">—</div>
-          </div>
-          <div class="zoneRow">
-            <div class="zoneLabel">S3</div>
-            <div class="zoneBarWrap"><div id="barS3" class="zoneBar s3"></div></div>
-            <div id="timeS3" class="zoneTime">—</div>
-          </div>
-          <div class="zoneRow">
-            <div class="zoneLabel">S4</div>
-            <div class="zoneBarWrap"><div id="barS4" class="zoneBar s4"></div></div>
-            <div id="timeS4" class="zoneTime">—</div>
-          </div>
-          <div class="zoneRow">
-            <div class="zoneLabel">S5</div>
-            <div class="zoneBarWrap"><div id="barS5" class="zoneBar s5"></div></div>
-            <div id="timeS5" class="zoneTime">—</div>
-          </div>
+          <div class="zoneRow"><div class="zoneLabel">S0</div><div class="zoneBarWrap"><div id="barS0" class="zoneBar s0"></div></div><div id="timeS0" class="zoneTime">—</div></div>
+          <div class="zoneRow"><div class="zoneLabel">S1</div><div class="zoneBarWrap"><div id="barS1" class="zoneBar s1"></div></div><div id="timeS1" class="zoneTime">—</div></div>
+          <div class="zoneRow"><div class="zoneLabel">S2</div><div class="zoneBarWrap"><div id="barS2" class="zoneBar s2"></div></div><div id="timeS2" class="zoneTime">—</div></div>
+          <div class="zoneRow"><div class="zoneLabel">S3</div><div class="zoneBarWrap"><div id="barS3" class="zoneBar s3"></div></div><div id="timeS3" class="zoneTime">—</div></div>
+          <div class="zoneRow"><div class="zoneLabel">S4</div><div class="zoneBarWrap"><div id="barS4" class="zoneBar s4"></div></div><div id="timeS4" class="zoneTime">—</div></div>
+          <div class="zoneRow"><div class="zoneLabel">S5</div><div class="zoneBarWrap"><div id="barS5" class="zoneBar s5"></div></div><div id="timeS5" class="zoneTime">—</div></div>
         </div>
 
         <div class="divider"></div>
 
         <div class="btnRow">
-          <button id="exportBtn" class="secondaryBtn ghost">⤓ Eksporter JSON</button>
-          <button id="clearBtn" class="secondaryBtn ghost">🧹 Tøm data</button>
+          <button id="exportBtn" class="secondaryBtn ghost">Eksporter JSON</button>
+          <button id="clearBtn" class="secondaryBtn ghost">Tøm data</button>
         </div>
+      </div>
 
-        <p class="footnote">
-          Eksporten er enkel JSON (samples + drag + soner). Dette kan flyttes rett inn i intervalltidtageren.
-        </p>
+      <div class="card">
+        <div class="cardTitle">Lagrede økter</div>
+        <div class="subHint">Økter lagres lokalt (IndexedDB). Du kan åpne og justere fart per drag.</div>
+        <div class="btnRow">
+          <select id="sessionSelect" class="selectWide"></select>
+          <button id="loadSessionBtn" class="secondaryBtn">Åpne</button>
+          <button id="deleteSessionBtn" class="secondaryBtn danger">Slett</button>
+        </div>
       </div>
     </section>
   </main>
 
-  <script src="./app.js" defer></script>
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(console.warn);
-    }
-  </script>
+  <!-- RESULTS MODAL -->
+  <div id="resultsModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div>
+          <div class="modalTitle">Resultat</div>
+          <div id="resultsSub" class="modalSub">—</div>
+        </div>
+        <button id="closeResultsBtn" class="miniBtn">Lukk</button>
+      </div>
+
+      <div class="modalGrid">
+        <div class="modalLeft">
+          <div class="modalSectionTitle">Makspuls per drag (max 30s snitt)</div>
+          <div class="resultsCanvasWrap">
+            <canvas id="resultsCanvas"></canvas>
+          </div>
+
+          <div class="modalSectionTitle">Tid i soner</div>
+          <div class="zoneChart compact">
+            <div class="zoneRow"><div class="zoneLabel">S0</div><div class="zoneBarWrap"><div id="rbarS0" class="zoneBar s0"></div></div><div id="rtimeS0" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S1</div><div class="zoneBarWrap"><div id="rbarS1" class="zoneBar s1"></div></div><div id="rtimeS1" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S2</div><div class="zoneBarWrap"><div id="rbarS2" class="zoneBar s2"></div></div><div id="rtimeS2" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S3</div><div class="zoneBarWrap"><div id="rbarS3" class="zoneBar s3"></div></div><div id="rtimeS3" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S4</div><div class="zoneBarWrap"><div id="rbarS4" class="zoneBar s4"></div></div><div id="rtimeS4" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S5</div><div class="zoneBarWrap"><div id="rbarS5" class="zoneBar s5"></div></div><div id="rtimeS5" class="zoneTime">—</div></div>
+          </div>
+        </div>
+
+        <div class="modalRight">
+          <div class="modalSectionTitle">Oppsummering</div>
+          <div id="summaryText" class="mono statsText">—</div>
+
+          <div class="modalSectionTitle">Fart per drag (kan redigeres)</div>
+          <div id="speedEditor" class="speedEditor">—</div>
+
+          <div class="btnRow modalBtns">
+            <button id="saveEditsBtn" class="secondaryBtn">Lagre endringer</button>
+            <button id="exportPngBtn" class="secondaryBtn ghost">Eksporter PNG</button>
+            <button id="sharePngBtn" class="secondaryBtn ghost">Del PNG</button>
+            <button id="exportJsonBtn2" class="secondaryBtn ghost">Eksporter JSON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
 </body>
 </html>
