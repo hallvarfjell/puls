@@ -1,1 +1,2 @@
-
+REV01
+LA y aksen ha minimumsverdi på 90 bpm og maksimumsverdi på 10 bpm over det den maksimale pulsen har vært i økta.
