@@ -1,49 +1,219 @@
 
+/* style.css – HR-app (mobil/PWA) */
+
+/* ---------- Design tokens ---------- */
+:root {
+  --bg: #0b0f14;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface2: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.10);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.68);
+  --muted2: rgba(255, 255, 255, 0.52);
+  --accent: #27f5a4;
+  --accent2: #2f84ff;
+  --danger: #ff4d6d;
+
+  --radius: 14px;
+  --radiusSm: 10px;
+
+  --shadow: 0 12px 30px rgba(0,0,0,0.35);
+  --shadowSm: 0 8px 18px rgba(0,0,0,0.25);
+
+  --pad: 16px;
+  --gap: 12px;
+
+  --font: system-ui, -apple-system, "SF Pro Display", "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: radial-gradient(1200px 800px at 30% -10%, rgba(47,132,255,0.22), transparent 60%),
+              radial-gradient(900px 700px at 90% 10%, rgba(39,245,164,0.12), transparent 55%),
+              var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+a { color: inherit; }
+
+button, input {
+  font: inherit;
+}
+
+/* Prevent iOS tap highlight looking odd */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve text rendering */
 body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #111;
-    color: white;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-header {
-    text-align: center;
-    padding: 20px;
-    font-size: 1.4rem;
-    background: #222;
+/* ---------- Layout ---------- */
+.appHeader {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  padding: 18px var(--pad) 14px var(--pad);
+  padding-top: calc(18px + env(safe-area-inset-top));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  background: linear-gradient(to bottom, rgba(11,15,20,0.92), rgba(11,15,20,0.55));
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-main {
-    padding: 20px;
+.title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
 }
 
-#connectBtn {
-    width: 100%;
-    padding: 18px;
-    font-size: 1.2rem;
-    border: none;
-    background: #0078ff;
-    color: white;
-    border-radius: 8px;
+.subtitle {
+  margin-top: 4px;
+  font-size: 0.92rem;
+  color: var(--muted);
 }
 
-#pulseBox {
-    margin-top: 25px;
-    text-align: center;
+.appMain {
+  padding: var(--pad);
+  padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--gap);
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-#pulseBox .label {
-    opacity: 0.7;
-    font-size: 0.9rem;
+/* ---------- Cards ---------- */
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadowSm);
 }
 
-#pulseValue {
-    font-size: 3.5rem;
-    margin-top: 5px;
-    font-weight: bold;
+.cardTitle {
+  font-weight: 700;
+  margin: 2px 2px 10px 2px;
+  color: rgba(255,255,255,0.86);
+}
+
+/* ---------- Button ---------- */
+.primaryBtn {
+  width: 100%;
+  padding: 16px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(47,132,255,1), rgba(20,88,200,1));
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 750;
+  box-shadow: 0 10px 22px rgba(47,132,255,0.25);
+  cursor: pointer;
+  transition: transform 0.06s ease, filter 0.2s ease;
+}
+
+.primaryBtn:active {
+  transform: translateY(1px) scale(0.995);
+  filter: brightness(0.96);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Metrics row ---------- */
+.row {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 0.58fr;
+  gap: 12px;
+}
+
+.metric {
+  background: rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radiusSm);
+  padding: 12px 12px;
+}
+
+.metric.small {
+  text-align: center;
+}
+
+.metricLabel {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.metricValue {
+  font-size: 3.1rem;
+  line-height: 1.0;
+  font-weight: 850;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(39,245,164,0.12);
+}
+
+.metricValueSmall {
+  font-size: 2.0rem;
+  line-height: 1.05;
+  font-weight: 800;
+  color: rgba(255,255,255,0.90);
+}
+
+.metricHint {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--muted2);
+}
+
+.statusText {
+  margin-top: 8px;
+  font-size: 0.92rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Chart ---------- */
+.chartWrap {
+  /* Kritisk: gir canvas høyde, ellers kan graf bli “usynlig” */
+  height: 260px;
+  width: 100%;
+  padding: 6px 2px 0 2px;
 }
 
 canvas {
-    margin-top: 30px;
-    width: 100%;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (min-width: 420px) {
+  .chartWrap { height: 320px; }
+  .metricValue { font-size: 3.4rem; }
+}
+
+@media (min-width: 720px) {
+  .appMain { padding: 20px; }
+  .card { padding: 16px; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .primaryBtn { transition: none; }
 }
