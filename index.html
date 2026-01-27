@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-title" content="HR" />
   <link rel="manifest" href="./icons/favicon/site.webmanifest" />
 
+  <!-- Styles -->
   <link rel="stylesheet" href="./style.css" />
 </head>
 
@@ -43,7 +44,7 @@
   </header>
 
   <main class="dashboard">
-    <!-- LEFT: Live + Chart -->
+    <!-- LEFT -->
     <section class="col colLeft">
       <div class="card">
         <div class="topRow">
@@ -88,7 +89,7 @@
       </div>
     </section>
 
-    <!-- RIGHT: Timer + Drag stats + Zones + Sessions -->
+    <!-- RIGHT -->
     <section class="col colRight">
       <div class="card">
         <div class="cardTitle">Dummy‑timer</div>
@@ -137,6 +138,21 @@
                 <span>Notat</span>
                 <input id="note" type="text" placeholder="(valgfritt)" />
               </label>
+            </div>
+
+            <!-- NEW: drag speed manual input -->
+            <div class="grid2">
+              <label class="field">
+                <span>Dragfart (km/t)</span>
+                <input id="dragSpeedInput" type="number" min="0" step="0.1" value="0.0" />
+              </label>
+              <div class="field">
+                <span>&nbsp;</span>
+                <button id="applyDragSpeedBtn" class="secondaryBtn">Sett for dette draget</button>
+              </div>
+            </div>
+            <div id="dragSpeedHint" class="subHint">
+              Tips: Hvis mølle er koblet til, settes dragfart automatisk til sluttfarten – med mindre du overstyrer.
             </div>
 
             <div class="btnRow">
@@ -193,7 +209,7 @@
 
       <div class="card">
         <div class="cardTitle">Lagrede økter</div>
-        <div class="subHint">Økter lagres lokalt (IndexedDB). Du kan åpne og justere fart per drag.</div>
+        <div class="subHint">Økter lagres lokalt (IndexedDB).</div>
         <div class="btnRow">
           <select id="sessionSelect" class="selectWide"></select>
           <button id="loadSessionBtn" class="secondaryBtn">Åpne</button>
@@ -202,53 +218,6 @@
       </div>
     </section>
   </main>
-
-  <!-- RESULTS MODAL -->
-  <div id="resultsModal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modalCard">
-      <div class="modalHeader">
-        <div>
-          <div class="modalTitle">Resultat</div>
-          <div id="resultsSub" class="modalSub">—</div>
-        </div>
-        <button id="closeResultsBtn" class="miniBtn">Lukk</button>
-      </div>
-
-      <div class="modalGrid">
-        <div class="modalLeft">
-          <div class="modalSectionTitle">Makspuls per drag (max 30s snitt)</div>
-          <div class="resultsCanvasWrap">
-            <canvas id="resultsCanvas"></canvas>
-          </div>
-
-          <div class="modalSectionTitle">Tid i soner</div>
-          <div class="zoneChart compact">
-            <div class="zoneRow"><div class="zoneLabel">S0</div><div class="zoneBarWrap"><div id="rbarS0" class="zoneBar s0"></div></div><div id="rtimeS0" class="zoneTime">—</div></div>
-            <div class="zoneRow"><div class="zoneLabel">S1</div><div class="zoneBarWrap"><div id="rbarS1" class="zoneBar s1"></div></div><div id="rtimeS1" class="zoneTime">—</div></div>
-            <div class="zoneRow"><div class="zoneLabel">S2</div><div class="zoneBarWrap"><div id="rbarS2" class="zoneBar s2"></div></div><div id="rtimeS2" class="zoneTime">—</div></div>
-            <div class="zoneRow"><div class="zoneLabel">S3</div><div class="zoneBarWrap"><div id="rbarS3" class="zoneBar s3"></div></div><div id="rtimeS3" class="zoneTime">—</div></div>
-            <div class="zoneRow"><div class="zoneLabel">S4</div><div class="zoneBarWrap"><div id="rbarS4" class="zoneBar s4"></div></div><div id="rtimeS4" class="zoneTime">—</div></div>
-            <div class="zoneRow"><div class="zoneLabel">S5</div><div class="zoneBarWrap"><div id="rbarS5" class="zoneBar s5"></div></div><div id="rtimeS5" class="zoneTime">—</div></div>
-          </div>
-        </div>
-
-        <div class="modalRight">
-          <div class="modalSectionTitle">Oppsummering</div>
-          <div id="summaryText" class="mono statsText">—</div>
-
-          <div class="modalSectionTitle">Fart per drag (kan redigeres)</div>
-          <div id="speedEditor" class="speedEditor">—</div>
-
-          <div class="btnRow modalBtns">
-            <button id="saveEditsBtn" class="secondaryBtn">Lagre endringer</button>
-            <button id="exportPngBtn" class="secondaryBtn ghost">Eksporter PNG</button>
-            <button id="sharePngBtn" class="secondaryBtn ghost">Del PNG</button>
-            <button id="exportJsonBtn2" class="secondaryBtn ghost">Eksporter JSON</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <script src="./app.js"></script>
 </body>
