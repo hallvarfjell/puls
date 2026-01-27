@@ -1,26 +1,25 @@
 /* =====================================================================
-   HR-APP — ENKEL, ROBUST, VANILLA JS (ÉN FIL)
+   HR-APP — ENKEL, ROBUST, VANILLA JS (ÉN FIL)  —  DEL 1 / 3
    Bygget for: Android nettbrett (landskap), FTMS + HR BLE, offline
-   Versjon: v2.0.0 — generert: " + new Date().toLocaleString("no-NO") + "
    ===================================================================== */
 
 /* =========================
    0) KONSTANTER & VERSJON
    ========================= */
 
-const APP_VERSION = "v2.0.0 — " + new Date().toLocaleString("no-NO");
+const APP_VERSION = "v2.1.0 — " + new Date().toLocaleString("no-NO");
 const $ = (id) => document.getElementById(id);
 
 // FTMS (Bluetooth SIG UUIDs)
-const FTMS_SERVICE     = "00001826-0000-1000-8000-00805f9b34fb";
-const TREADMILL_DATA   = "00002acd-0000-1000-8000-00805f9b34fb";
-const HR_SERVICE       = "heart_rate";
-const HR_CHAR          = "heart_rate_measurement";
+const FTMS_SERVICE   = "00001826-0000-1000-8000-00805f9b34fb";
+const TREADMILL_DATA = "00002acd-0000-1000-8000-00805f9b34fb";
+const HR_SERVICE     = "heart_rate";
+const HR_CHAR        = "heart_rate_measurement";
 
 // Vinduer / tegning
-const HR_WINDOW_MS     = 15 * 60 * 1000;
-const MAX_WINDOW_PTS   = 15 * 60 * 3;
-const CHART_FPS_MS     = 250;
+const HR_WINDOW_MS   = 15 * 60 * 1000;
+const MAX_WINDOW_PTS = 15 * 60 * 3;
+const CHART_FPS_MS   = 250;
 
 // PNG-resultat layout
 const PNG_W = 1800;
@@ -28,7 +27,7 @@ const PNG_H = 1200;
 
 // Farger
 const COLOR_PULSE = "#27f5a4";
-const COLOR_SPEED = "#ffffff"; // fartslinje (din preferanse)
+const COLOR_SPEED = "#ffffff"; // fartslinje i hvitt
 
 /* =========================
    1) GLOBAL STATE
@@ -37,45 +36,45 @@ const COLOR_SPEED = "#ffffff"; // fartslinje (din preferanse)
 const STATE = {
   // BLE-håndtak
   hrDevice: null,
-  hrChar: null,
+  hrChar:   null,
   tmDevice: null,
-  tmChar: null,
+  tmChar:   null,
 
   // Strømmer
-  hrSamples: [],        // {ts,bpm,src}
-  speedSamples: [],     // {ts,kmh,effectiveKmh,src}
+  hrSamples:      [],   // {ts,bpm,src}
+  speedSamples:   [],   // {ts,kmh,effectiveKmh,src}
   inclineSamples: [],   // {ts,percent,src}
 
   // Siste verdier
-  currentHR: null,
-  lastHrTs: 0,
-  currentSpeed: 0,
+  currentHR:      null,
+  lastHrTs:       0,
+  currentSpeed:   0,
   currentIncline: 0,
 
-  // Vindusgraf
-  windowPoints: [],     // {x,y} (HR siste 15 min)
-  lastChartDraw: 0,
+  // Vindusgraf (live HR)
+  windowPoints:   [],   // {x,y} (HR siste 15 min)
+  lastChartDraw:  0,
 
   // Laps
-  laps: [],             // {type,rep,startTs,endTs,max30bpm,speedKmh,inclinePct, speedSrc, inclSrc}
-  currentLap: null,
+  laps:        [],      // {type,rep,startTs,endTs,max30bpm,speedKmh,inclinePct,speedSrc,inclSrc}
+  currentLap:  null,
 
   // Timer
   timerRunning: false,
-  elapsedSec: 0,
-  tickTimer: null,
+  elapsedSec:   0,
+  tickTimer:    null,
 
   // WakeLock
   wakeLock: null,
 
-  // Zoner (S0..S5)
+  // Zoner
   zones: { z1:110, z2:130, z3:150, z4:165, z5:180 },
 
-  // Manuell defaults (når FTMS mangler)
+  // Manuell default incline (når FTMS ikke gir verdi)
   defaultManualInclinePct: 0.0,
 
-  // Cache for sluttfart/-incline kandidater i pågående drag
-  candidateSpeed: null,
+  // Sluttverdi-kandidater for pågående drag
+  candidateSpeed:   null,
   candidateIncline: null,
 
   // IndexedDB
@@ -91,13 +90,13 @@ function mmss(s) {
   return `${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`;
 }
 function fmtTime(sec) {
-  const s = Math.round(sec); const m = Math.floor(s/60); const r = s%60;
+  const s = Math.round(sec); const m = Math.floor(s/60); const r=s%60;
   return `${m}:${String(r).padStart(2,"0")}`;
 }
 function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
-function roundHR(v){ return Math.round(v); }     // puls = hele tall
-function round1(v){ return Math.round(v*10)/10;} // fart/incline = 1 desimal
-function toBpmScaleFromSpeed(kmh){ return kmh*10; } // unified y-akse: 160 bpm ↔ 16.0 km/t
+function roundHR(v){ return Math.round(v); }       // puls = hele tall
+function round1(v){ return Math.round(v*10)/10; }  // fart/stigning = 1 desimal
+function toBpmScaleFromSpeed(kmh){ return kmh*10; } // 160 bpm ↔ 16.0 km/t (samme skala)
 
 function setStatus(t){ $("statusText").textContent = t; }
 function isIOS(){
@@ -165,13 +164,20 @@ async function setupUpdateBanner(){
 }
 
 /* =========================
-   5) BLE — HEART RATE
+   5) iOS NOTICE (for BT-støtte)
+   ========================= */
+
+function showIOSNotice(msg){ const el=$("iosNotice"); el.textContent=msg; el.classList.remove("hidden"); }
+function hideIOSNotice(){ $("iosNotice").classList.add("hidden"); }
+
+/* =========================
+   6) BLE — HEART RATE
    ========================= */
 
 function setHRButtonConnected(ok){
   const b=$("connectBtn");
-  if(ok){ b.classList.add("connected"); b.textContent="HR ✓"; }
-  else { b.classList.remove("connected"); b.textContent="Koble til pulsbelte"; }
+  if(ok){ b.classList.add("connected"); b.textContent="Pulsbelte"; } // tekst skjules av CSS i connected-modus
+  else  { b.classList.remove("connected"); b.textContent="Pulsbelte"; }
 }
 
 async function connectHR(){
@@ -206,13 +212,13 @@ function onHRNotify(e){
 }
 
 /* =========================
-   6) BLE — FTMS (FART + INCLINE)
+   7) BLE — FTMS (FART + STIGNING)
    ========================= */
 
 function setTreadmillButtonConnected(ok){
   const b=$("treadmillBtn");
-  if(ok){ b.classList.add("connected"); b.textContent="Mølle ✓"; }
-  else { b.classList.remove("connected"); b.textContent="Mølle: Koble til"; }
+  if(ok){ b.classList.add("connected"); b.textContent="Mølle"; }
+  else  { b.classList.remove("connected"); b.textContent="Mølle"; }
 }
 
 async function connectTreadmill(){
@@ -237,22 +243,20 @@ async function connectTreadmill(){
   }catch(e){ console.error(e); setStatus("Mølle-tilkobling feilet"); alert("Klarte ikke koble til mølle via BLE."); }
 }
 
-// Enkel FTMS‑parser (robust forsøkslogikk for incline):
-// - speed: ofte bytes [2..3] = n/100 km/t
-// - incline: forsøker [6..7] som n/10 %, ellers beholder forrige
+// Robust/konservativ FTMS‑parser:
+// - Speed: ofte bytes [2..3] = n/100 km/t
+// - Incline: prøv [6..7] = n/10 %
 function parseFTMSPayload(dv){
   let kmh = 0, inclinePct = STATE.currentIncline;
 
   try {
-    const rawSpeed = dv.getUint16(2,true); // n/100 km/t
+    const rawSpeed = dv.getUint16(2,true);
     kmh = rawSpeed/100.0;
   } catch {}
 
-  // Prøv [6..7] som n/10 %
   try {
-    const rawIncl = dv.getInt16(6,true);   // n/10 %
+    const rawIncl = dv.getInt16(6,true);  // n/10 %
     const pct = rawIncl/10.0;
-    // Skulle helst sanity-checke: -20% .. +40% (romslig)
     if (pct > -30 && pct < 40) inclinePct = pct;
   } catch {}
 
@@ -266,8 +270,11 @@ function onTreadmillNotify(e){
   const effSpeed = (STATE.currentLap && STATE.currentLap.type==="rest") ? 0 : kmh;
   ingestSpeed(Date.now(), kmh, effSpeed, "ftms");
 
-  STATE.currentIncline = (STATE.currentLap && STATE.currentLap.type==="rest") ? STATE.currentIncline : round1(inclinePct);
-  ingestIncline(Date.now(), STATE.currentIncline, "ftms");
+  // Stigning oppdateres ikke i pause (men behold siste)
+  if (!(STATE.currentLap && STATE.currentLap.type==="rest")) {
+    STATE.currentIncline = round1(inclinePct);
+    ingestIncline(Date.now(), STATE.currentIncline, "ftms");
+  }
 
   // Kandidater for sluttverdi i arbeid
   if(STATE.currentLap && STATE.currentLap.type==="work"){
@@ -277,7 +284,7 @@ function onTreadmillNotify(e){
 }
 
 /* =========================
-   7) SIMULERING (HR og incline)
+   8) SIMULERING (HR + INCLINE)
    ========================= */
 
 let simBpm = 92;
@@ -298,14 +305,11 @@ function simulateHR(phase){
   simBpm = clamp(simBpm, 50, 210);
   return Math.round(simBpm);
 }
-
-// Simulert incline: bruk STATE.defaultManualInclinePct (konstant), endres av bruker
-function simulateIncline(){
-  return round1(STATE.defaultManualInclinePct);
-}
+// Simulert incline: fast verdi (kan justeres i UI)
+function simulateIncline(){ return round1(STATE.defaultManualInclinePct); }
 
 /* =========================
-   8) INGESTION (HR / SPEED / INCLINE)
+   9) INGESTION (HR / SPEED / INCLINE)
    ========================= */
 
 function ingestHR(ts, bpm, src){
@@ -313,7 +317,8 @@ function ingestHR(ts, bpm, src){
   $("pulseValue").textContent = bpm;
 
   STATE.hrSamples.push({ts, bpm, src});
-  // Vindusbuffer
+
+  // Vindusbuffer for livegraf
   STATE.windowPoints.push({x:ts, y:bpm});
   const cutoff = ts - HR_WINDOW_MS;
   while(STATE.windowPoints.length && STATE.windowPoints[0].x < cutoff) STATE.windowPoints.shift();
@@ -331,10 +336,13 @@ function ingestSpeed(ts, kmh, effKmh, src){
 function ingestIncline(ts, pct, src){
   STATE.currentIncline = pct;
   STATE.inclineSamples.push({ts, percent: pct, src});
+  // Live UI for stigning
+  const el = $("inclineNow");
+  if (el) el.textContent = STATE.currentIncline.toFixed(1);
 }
 
 /* =========================
-   9) LIVE PULS-GRAF
+   10) LIVE PULS-GRAF
    ========================= */
 
 let canvasW=0, canvasH=0, canvasDpr=1;
@@ -362,7 +370,6 @@ function drawLiveChart(){
   const canvas=$("hrCanvas"); const ctx=canvas.getContext("2d");
   const w=canvasW, h=canvasH; if(!w||!h) return;
 
-  // bakgrunn
   ctx.clearRect(0,0,w,h);
 
   const padL=70, padR=18, padT=16, padB=36;
@@ -383,7 +390,7 @@ function drawLiveChart(){
   const xToPx = (x)=> padL + ((x-minX)/(maxX-minX))*plotW;
   const yToPx = (y)=> padT + (1 - (y-minY)/(maxY-minY))*plotH;
 
-  // grid (svak, men ren bakgrunn gir mest fokus)
+  // grid (diskré linjer)
   ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth=1; ctx.font="16px system-ui";
   ctx.fillStyle="rgba(255,255,255,0.75)"; ctx.textAlign="right"; ctx.textBaseline="middle";
@@ -412,13 +419,17 @@ function drawLiveChart(){
   }
 }
 
-// Oppdater "siden sist"
+// Oppdater «siden sist»
 setInterval(()=>{
   $("lastSeen").textContent = STATE.lastHrTs ? Math.max(0, Math.floor((Date.now()-STATE.lastHrTs)/1000)) : "--";
 }, 500);
 
+/* ====== SLUTT PÅ DEL 1 / 3 ====== *//* =====================================================================
+   HR-APP — ENKEL, ROBUST, VANILLA JS (ÉN FIL)  —  DEL 2 / 3
+   ===================================================================== */
+
 /* =========================
-   10) INTERVALLMOTOR
+   11) INTERVALLMOTOR
    ========================= */
 
 function getCfg(){
@@ -433,138 +444,260 @@ function getCfg(){
 
 function startTimer(){
   if(STATE.timerRunning) return;
-  STATE.timerRunning=true; STATE.elapsedSec=0; STATE.laps=[]; STATE.currentLap=null;
+  STATE.timerRunning=true;
+  STATE.elapsedSec=0;
+  STATE.laps=[];
+  STATE.currentLap=null;
 
-  $("startBtn").disabled=true; $("stopBtn").disabled=false;
+  $("startBtn").disabled=true;
+  $("stopBtn").disabled=false;
+
   acquireWakeLock();
 
   const cfg=getCfg();
-  if(cfg.warm>0) startLap("warmup",0); else startLap("work",1);
+  if(cfg.warm>0) startLap("warmup",0);
+  else           startLap("work",1);
 
-  $("timerPhase").textContent="Starter…"; $("timerClock").textContent="00:00";
+  $("timerPhase").textContent="Starter…";
+  $("dragRemainClock").textContent="00:00";
+  $("totalTimeClock").textContent="00:00";
+
   STATE.tickTimer = setInterval(tick,1000);
 }
 
 function stopTimer(){
   if(!STATE.timerRunning) return;
-  STATE.timerRunning=false; clearInterval(STATE.tickTimer); STATE.tickTimer=null;
+  STATE.timerRunning=false;
+  clearInterval(STATE.tickTimer);
+  STATE.tickTimer=null;
 
   endLap();
-  $("startBtn").disabled=false; $("stopBtn").disabled=true;
+
+  $("startBtn").disabled=false;
+  $("stopBtn").disabled=true;
+
   releaseWakeLock();
 
-  finalizeLaps(); renderLapStatsText(); renderZones();
+  finalizeLaps();
+  renderLapStatsText();
+  renderZones();
+
+  // Vis resultat direkte
   showResultsModal();
 }
 
 function resetTimer(){
   if(STATE.timerRunning) stopTimer();
-  STATE.elapsedSec=0; $("timerClock").textContent="00:00"; $("timerPhase").textContent="Stoppet";
-  STATE.laps=[]; STATE.currentLap=null; STATE.windowPoints=[];
-  renderLapStatsText(); renderZones(); drawLiveChart();
-}
 
-function tick(){
-  STATE.elapsedSec++; $("timerClock").textContent = mmss(STATE.elapsedSec);
-  const cfg=getCfg(); const cycle=cfg.work+cfg.rest; const totalMain=cfg.reps*cycle; const total=cfg.warm+totalMain+cfg.cooldown;
-  const t=STATE.elapsedSec-1;
+  STATE.elapsedSec=0;
+  $("dragRemainClock").textContent="00:00";
+  $("totalTimeClock").textContent="00:00";
+  $("timerPhase").textContent="Stoppet";
 
-  let phase="done", rep=0;
-  if(t<total){
-    if(t<cfg.warm){ phase="warmup"; }
-    else if(t<cfg.warm+totalMain){
-      const t2=t-cfg.warm; const idx=Math.floor(t2/cycle); const within=t2%cycle; rep=idx+1;
-      phase = within<cfg.work ? "work" : "rest";
-    } else phase="cooldown";
-  }
+  STATE.laps=[];
+  STATE.currentLap=null;
+  STATE.windowPoints=[];
 
-  if(phase==="done"){ $("timerPhase").textContent="Ferdig"; stopTimer(); return; }
-
-  if(!STATE.currentLap || STATE.currentLap.type!==phase || STATE.currentLap.rep!==rep){
-    endLap(); startLap(phase,rep);
-  }
-
-  // UI tekst
-  if(phase==="warmup") $("timerPhase").textContent="Oppvarming";
-  else if(phase==="cooldown") $("timerPhase").textContent="Nedjogg";
-  else if(phase==="work") $("timerPhase").textContent=`Arbeid (Drag ${rep}/${cfg.reps})`;
-  else $("timerPhase").textContent=`Pause (Drag ${rep}/${cfg.reps})`;
-
-  // I pause: 0 fart
-  if(phase==="rest"){ $("speedNow").textContent="0.0"; }
-
-  // Simulering hvis HR ikke tilkoblet
-  if(shouldSimHR()){
-    const bpm = simulateHR(phase);
-    ingestHR(Date.now(), bpm, "sim");
-  }
-
-  // Simulert incline hvis ingen FTMS (eller bare for stabil display)
-  if(!STATE.tmChar && (phase==="work"||phase==="warmup"||phase==="cooldown")){
-    const incl = simulateIncline();
-    STATE.currentIncline = incl;
-    ingestIncline(Date.now(), incl, "sim");
-    if(STATE.currentLap && STATE.currentLap.type==="work") STATE.candidateIncline = incl;
-  }
-
-  // Oppdater sone/dragtekst løpende (lett)
-  if(STATE.elapsedSec%2===0){ renderZones(); renderLapStatsText(); }
+  renderLapStatsText();
+  renderZones();
+  drawLiveChart();
 }
 
 function startLap(type, rep){
   STATE.currentLap = {
-    type, rep, startTs: Date.now(), endTs:null,
-    max30bpm:null, speedKmh: (type==="rest"?0:null), inclinePct: null,
-    speedSrc:null, inclSrc:null
+    type,
+    rep,
+    startTs: Date.now(),
+    endTs: null,
+    max30bpm: null,
+    speedKmh: (type==="rest") ? 0 : null,
+    inclinePct: (type==="rest") ? STATE.currentIncline : null,
+    speedSrc: null,
+    inclSrc: null
   };
   STATE.laps.push(STATE.currentLap);
 
-  // Prefill input for manuell dragfart/dragincline
+  // Prefyll dragfart-felt for work
   if(type==="work"){
-    $("dragSpeedInput").value   = round1(STATE.currentSpeed||0).toFixed(1);
-    $("dragInclineInput").value = round1(STATE.currentIncline||STATE.defaultManualInclinePct).toFixed(1);
+    const pre = Number.isFinite(STATE.currentSpeed) ? STATE.currentSpeed : 0;
+    $("dragSpeedInput").value = round1(pre).toFixed(1);
   }else{
-    $("dragSpeedInput").value="0.0"; $("dragInclineInput").value = STATE.defaultManualInclinePct.toFixed(1);
+    $("dragSpeedInput").value = "0.0";
   }
-
-  STATE.candidateSpeed=null; STATE.candidateIncline=null;
 }
 
 function endLap(){
-  if(!STATE.currentLap || STATE.currentLap.endTs) return;
-  STATE.currentLap.endTs = Date.now();
+  const L = STATE.currentLap;
+  if(!L || L.endTs) return;
 
-  const L=STATE.currentLap;
+  L.endTs = Date.now();
+
   if(L.type==="rest"){
-    L.speedKmh=0; L.speedSrc="forced_rest";
-    L.inclinePct = STATE.currentIncline; L.inclSrc = "carry";
-  }else if(L.type==="work"){
-    // speed: manuelt > kandidat > siste
-    const manualSpeed = parseFloat($("dragSpeedInput").value);
-    if(Number.isFinite(manualSpeed) && manualSpeed>0){
-      L.speedKmh=round1(manualSpeed); L.speedSrc="manual";
-    }else if(Number.isFinite(STATE.candidateSpeed) && STATE.candidateSpeed>0){
-      L.speedKmh=round1(STATE.candidateSpeed); L.speedSrc="ftms_end";
-    }else{
-      L.speedKmh=round1(STATE.currentSpeed||0); L.speedSrc=L.speedKmh>0?"ftms_last":"unknown";
-    }
-
-    // incline: manuelt > kandidat > siste
-    const manualIncl = parseFloat($("dragInclineInput").value);
-    if(Number.isFinite(manualIncl)){
-      L.inclinePct=round1(manualIncl); L.inclSrc="manual";
-    }else if(Number.isFinite(STATE.candidateIncline)){
-      L.inclinePct=round1(STATE.candidateIncline); L.inclSrc="ftms_end";
-    }else{
-      L.inclinePct=round1(STATE.currentIncline||STATE.defaultManualInclinePct); L.inclSrc="carry";
-    }
-  }else{
-    // warmup/cooldown: lagre siste kjente
-    L.speedKmh = round1(STATE.currentSpeed||0); L.speedSrc="info";
-    L.inclinePct= round1(STATE.currentIncline||STATE.defaultManualInclinePct); L.inclSrc="info";
+    L.speedKmh   = 0;
+    L.speedSrc   = "forced_rest";
+    L.inclinePct = Number.isFinite(STATE.currentIncline) ? round1(STATE.currentIncline) : round1(STATE.defaultManualInclinePct);
+    L.inclSrc    = "carry";
+    STATE.currentLap = null;
+    return;
   }
 
-  STATE.currentLap=null;
+  if(L.type==="work"){
+    // speed: manual > candidate > last
+    const manualSpeed = parseFloat($("dragSpeedInput").value);
+    if(Number.isFinite(manualSpeed) && manualSpeed>=0){
+      L.speedKmh = round1(manualSpeed);
+      L.speedSrc = "manual";
+    }else if(Number.isFinite(STATE.candidateSpeed) && STATE.candidateSpeed>0){
+      L.speedKmh = round1(STATE.candidateSpeed);
+      L.speedSrc = "ftms_end";
+    }else{
+      L.speedKmh = round1(STATE.currentSpeed||0);
+      L.speedSrc = L.speedKmh>0 ? "ftms_last" : "unknown";
+    }
+
+    // incline: manual field (from dynamic UI) > candidate > last/current/default
+    const incInp = $("dragInclineInput");
+    const manualInc = incInp ? parseFloat(incInp.value) : NaN;
+    if(Number.isFinite(manualInc)){
+      L.inclinePct = round1(manualInc);
+      L.inclSrc    = "manual";
+    }else if(Number.isFinite(STATE.candidateIncline)){
+      L.inclinePct = round1(STATE.candidateIncline);
+      L.inclSrc    = "ftms_end";
+    }else{
+      L.inclinePct = round1(STATE.currentIncline||STATE.defaultManualInclinePct);
+      L.inclSrc    = "carry";
+    }
+  }else{
+    // warmup/cooldown: logg siste kjente
+    L.speedKmh   = round1(STATE.currentSpeed||0);
+    L.speedSrc   = "info";
+    L.inclinePct = round1(STATE.currentIncline||STATE.defaultManualInclinePct);
+    L.inclSrc    = "info";
+  }
+
+  STATE.currentLap = null;
+}
+
+// Tick med gjenstående dragtid (stor) + total tid (liten)
+function tick(){
+  STATE.elapsedSec++;
+  const totalEl = $("totalTimeClock");
+  if(totalEl) totalEl.textContent = mmss(STATE.elapsedSec);
+
+  const cfg=getCfg();
+  const cycle=cfg.work+cfg.rest;
+  const totalMain=cfg.reps*cycle;
+  const total=cfg.warm+totalMain+cfg.cooldown;
+
+  const t=STATE.elapsedSec-1;
+
+  let phase="done", rep=0, phaseRemain=0;
+  if(t < total){
+    if(t < cfg.warm){
+      phase="warmup";
+      phaseRemain = cfg.warm - t;
+    } else if (t < cfg.warm + totalMain){
+      const t2 = t - cfg.warm;
+      const cycleIdx = Math.floor(t2/cycle);
+      const within   = t2 % cycle;
+      rep = cycleIdx + 1;
+      if (within < cfg.work){
+        phase="work";
+        phaseRemain = cfg.work - within;
+      } else {
+        phase="rest";
+        phaseRemain = cycle - within;
+      }
+    } else {
+      const t3 = t - (cfg.warm+totalMain);
+      phase="cooldown";
+      phaseRemain = cfg.cooldown - t3;
+    }
+  }
+
+  // Ferdig?
+  if(phase==="done"){
+    const phaseEl = $("timerPhase");
+    if(phaseEl) phaseEl.textContent="Ferdig";
+    const remainEl = $("dragRemainClock");
+    if(remainEl) remainEl.textContent="00:00";
+    stopTimer();
+    return;
+  }
+
+  // Bytt lap ved fase/rep-skifte
+  if(!STATE.currentLap || STATE.currentLap.type!==phase || STATE.currentLap.rep!==rep){
+    endLap();
+    startLap(phase,rep);
+  }
+
+  // Oppdater gjenstående dragtid (stor)
+  const remainEl = $("dragRemainClock");
+  if(remainEl) remainEl.textContent = mmss(Math.max(0, phaseRemain));
+
+  // Fase‑tekst
+  const phaseEl = $("timerPhase");
+  if(phaseEl){
+    if(phase==="warmup") phaseEl.textContent="Oppvarming";
+    else if(phase==="cooldown") phaseEl.textContent="Nedjogg";
+    else if(phase==="work") phaseEl.textContent=`Arbeid (Drag ${rep}/${cfg.reps})`;
+    else phaseEl.textContent=`Pause (Drag ${rep}/${cfg.reps})`;
+  }
+
+  // Simuler HR (og incline) ved behov
+  if(shouldSimHR()){
+    const bpm = simulateHR(phase);
+    ingestHR(Date.now(), bpm, "sim");
+    if(!STATE.tmChar) ingestIncline(Date.now(), simulateIncline(), "sim");
+  }
+
+  // Håndhev 0 fart i pause
+  if(STATE.currentLap && STATE.currentLap.type==="rest"){
+    const speedEl = $("speedNow");
+    if(speedEl) speedEl.textContent = "0.0";
+  }
+
+  // Lett periodisk oppdatering
+  if(STATE.elapsedSec%2===0){
+    renderLapStatsText();
+    renderZones();
+  }
+}
+
+/* =========================
+   12) STATISTIKK
+   ========================= */
+
+function samplesInRange(startTs,endTs){
+  return STATE.hrSamples
+    .filter(p=>p.ts>=startTs && p.ts<=endTs)
+    .sort((a,b)=>a.ts-b.ts);
+}
+
+// Tidsvektet 30s-maks
+function computeMax30sAvg(samples){
+  if(!samples || samples.length<2) return null;
+  let best=-Infinity;
+  for(let i=0;i<samples.length-1;i++){
+    const startT=samples[i].ts, endT=startT+30000;
+    let area=0, t=startT, k=i;
+    while(k<samples.length-1 && samples[k+1].ts<=t) k++;
+    while(t<endT && k<samples.length-1){
+      const tNext=Math.min(endT, samples[k+1].ts);
+      const dt=Math.max(0,(tNext-t)/1000);
+      area += samples[k].bpm*dt;
+      t=tNext;
+      if(t>=samples[k+1].ts) k++;
+    }
+    if(t<endT){
+      const dt=(endT-t)/1000;
+      area += samples[samples.length-1].bpm*dt;
+    }
+    const avg=area/30;
+    if(avg>best) best=avg;
+  }
+  return (best===-Infinity)? null : best;
 }
 
 function finalizeLaps(){
@@ -576,59 +709,35 @@ function finalizeLaps(){
   }
 }
 
-/* =========================
-   11) STATISTIKK
-   ========================= */
-
-function samplesInRange(startTs,endTs){
-  return STATE.hrSamples.filter(p=>p.ts>=startTs && p.ts<=endTs).sort((a,b)=>a.ts-b.ts);
-}
-
-// Tidsvektet max 30s gjennomsnitt
-function computeMax30sAvg(samples){
-  if(!samples || samples.length<2) return null;
-  let best=-Infinity;
-  for(let i=0;i<samples.length-1;i++){
-    const startT=samples[i].ts, endT=startT+30000;
-    let area=0, t=startT, k=i;
-    while(k<samples.length-1 && samples[k+1].ts<=t) k++;
-    while(t<endT && k<samples.length-1){
-      const tNext=Math.min(endT, samples[k+1].ts);
-      const dt = Math.max(0,(tNext-t)/1000);
-      area += samples[k].bpm * dt;
-      t=tNext; if(t>=samples[k+1].ts) k++;
-    }
-    if(t<endT){
-      const dt=(endT-t)/1000;
-      area += samples[samples.length-1].bpm * dt;
-    }
-    const avg=area/30; if(avg>best) best=avg;
-  }
-  return best===-Infinity? null : best;
-}
-
-// Sonetid KUN i økta (første start → siste slutt, levende slutt hvis pågår)
+// Soner: kun i økta (fra første start til siste slutt; hvis pågår → «nå»)
 function computeZoneSecondsSessionOnly(){
   if(!STATE.laps.length) return [0,0,0,0,0,0];
-  const first=STATE.laps[0], last=STATE.laps[STATE.laps.length-1];
+  const first=STATE.laps[0], last=STATE.laps.at(-1);
   const start=first.startTs||0, end=last.endTs||Date.now();
-  if(end<=start) return [0,0,0,0,0,0];
+  if(!start || end<=start) return [0,0,0,0,0,0];
 
   const samples = STATE.hrSamples.filter(p=>p.ts>=start && p.ts<=end).sort((a,b)=>a.ts-b.ts);
-  const z = [0,0,0,0,0,0]; if(samples.length<2) return z;
-
-  const {z1,z2,z3,z4,z5} = STATE.zones;
-  function zoneOf(bpm){ if(bpm<z1) return 0; if(bpm<z2) return 1; if(bpm<z3) return 2; if(bpm<z4) return 3; if(bpm<z5) return 4; return 5; }
-
+  const z=[0,0,0,0,0,0]; if(samples.length<2) return z;
+  const {z1,z2,z3,z4,z5}=STATE.zones;
+  const zoneOf = (bpm)=>{
+    if(bpm<z1) return 0;
+    if(bpm<z2) return 1;
+    if(bpm<z3) return 2;
+    if(bpm<z4) return 3;
+    if(bpm<z5) return 4;
+    return 5;
+  };
   for(let i=0;i<samples.length-1;i++){
-    const s=samples[i]; const dt=Math.max(0,Math.min(5,(samples[i+1].ts-s.ts)/1000));
+    const s=samples[i];
+    const dt=Math.max(0,Math.min(5,(samples[i+1].ts - s.ts)/1000));
     z[zoneOf(s.bpm)] += dt;
   }
   return z;
 }
 
 function renderZones(){
-  const zs=computeZoneSecondsSessionOnly(); const maxSec=Math.max(...zs,1);
+  const zs = computeZoneSecondsSessionOnly();
+  const maxSec = Math.max(...zs,1);
   for(let i=0;i<=5;i++){
     $(`barS${i}`).style.width = `${((zs[i]/maxSec)*100).toFixed(1)}%`;
     $(`timeS${i}`).textContent = fmtTime(zs[i]);
@@ -649,32 +758,38 @@ function renderLapStatsText(){
 }
 
 /* =========================
-   12) RESULTATMODAL + PNG
+   13) RESULTATMODAL + PNG
    ========================= */
 
 function showResultsModal(){
-  const modal=$("resultsModal"); modal.classList.remove("hidden");
+  const modal=$("resultsModal");
+  modal.classList.remove("hidden");
 
   const note=$("note").value.trim(); const when=new Date().toLocaleString("no-NO");
   $("resultsSub").textContent = note? `${when} · ${note}` : when;
 
-  // summer tider
+  // Sum tider
   let warmT=0, workT=0, restT=0, coolT=0;
   for(const L of STATE.laps){
-    if(!L.endTs) continue; const dur=(L.endTs-L.startTs)/1000;
-    if(L.type==="warmup") warmT+=dur; else if(L.type==="work") workT+=dur;
-    else if(L.type==="rest") restT+=dur; else if(L.type==="cooldown") coolT+=dur;
+    if(!L.endTs) continue;
+    const dur=(L.endTs-L.startTs)/1000;
+    if(L.type==="warmup") warmT+=dur;
+    else if(L.type==="work") workT+=dur;
+    else if(L.type==="rest") restT+=dur;
+    else if(L.type==="cooldown") coolT+=dur;
   }
+
+  // Total faktisk tid
   let totalActual=0;
   if(STATE.laps.length && STATE.laps[0].startTs && STATE.laps.at(-1).endTs){
     totalActual=Math.round((STATE.laps.at(-1).endTs-STATE.laps[0].startTs)/1000);
   }
 
-  // sone
+  // Soner
   const zoneSecs = computeZoneSecondsSessionOnly();
   renderZonesToResults(zoneSecs);
 
-  // snittpuls total
+  // Snittpuls total
   let sumHR=0, cntHR=0;
   if(STATE.laps.length){
     const start=STATE.laps[0].startTs, end=STATE.laps.at(-1).endTs||Date.now();
@@ -682,22 +797,26 @@ function showResultsModal(){
   }
   const avgHR = cntHR? roundHR(sumHR/cntHR) : 0;
 
-  // distanse (km) fra effective speed
+  // Distanse (km) fra effective speed
   let dist=0;
   if(STATE.laps.length){
     const start=STATE.laps[0].startTs, end=STATE.laps.at(-1).endTs||Date.now();
     const s=STATE.speedSamples.filter(p=>p.ts>=start && p.ts<=end).sort((a,b)=>a.ts-b.ts);
     for(let i=0;i<s.length-1;i++){
-      const dt=(s[i+1].ts - s[i].ts)/1000; dist += s[i].effectiveKmh*(dt/3600);
+      const dt=(s[i+1].ts - s[i].ts)/1000;
+      dist += s[i].effectiveKmh*(dt/3600);
     }
   }
 
-  // incline stats (snitt & maks per økt)
+  // Stigning (snitt & maks)
   let sumInc=0, cntInc=0, maxInc=0;
   if(STATE.laps.length){
     const start=STATE.laps[0].startTs, end=STATE.laps.at(-1).endTs||Date.now();
     for(const p of STATE.inclineSamples){
-      if(p.ts>=start && p.ts<=end){ sumInc+=p.percent; cntInc++; if(p.percent>maxInc) maxInc=p.percent; }
+      if(p.ts>=start && p.ts<=end){
+        sumInc += p.percent; cntInc++;
+        if(p.percent>maxInc) maxInc=p.percent;
+      }
     }
   }
   const avgInc = cntInc? round1(sumInc/cntInc) : 0;
@@ -718,10 +837,10 @@ Maks stigning:   ${maxInc.toFixed(1)} %`;
   drawResultsChart();
 
   $("closeResultsBtn").onclick=()=>modal.classList.add("hidden");
-  $("exportPngBtn").onclick = exportResultsPNG;
-  $("sharePngBtn").onclick  = shareResultsPNG;
-  $("exportJsonBtn2").onclick= exportJSON;
-  $("saveEditsBtn").onclick  = saveEditsAndRefresh;
+  $("exportPngBtn").onclick   = exportResultsPNG;
+  $("sharePngBtn").onclick    = shareResultsPNG;
+  $("exportJsonBtn2").onclick = exportJSON;       // defineres i DEL 3
+  $("saveEditsBtn").onclick   = saveEditsAndRefresh;
 }
 
 function renderZonesToResults(zs){
@@ -732,8 +851,10 @@ function renderZonesToResults(zs){
   }
 }
 
+// Redigerbar fart/stigning pr drag (i resultatmodalen)
 function renderSpeedInclineEditor(){
-  const wrap=$("speedEditor"); const work=STATE.laps.filter(l=>l.type==="work"&&l.endTs);
+  const wrap=$("speedEditor");
+  const work=STATE.laps.filter(l=>l.type==="work"&&l.endTs);
   if(!work.length){ wrap.textContent="—"; return; }
   wrap.innerHTML="";
 
@@ -744,6 +865,7 @@ function renderSpeedInclineEditor(){
     lbl.textContent=`Drag ${L.rep}`;
     row.appendChild(lbl);
 
+    // SPEED
     const inpSpeed=document.createElement("input");
     inpSpeed.type="number"; inpSpeed.step="0.1"; inpSpeed.min="0";
     inpSpeed.value=(Number.isFinite(L.speedKmh)?L.speedKmh:0).toFixed(1);
@@ -751,9 +873,9 @@ function renderSpeedInclineEditor(){
     inpSpeed.dataset.kind="speed";
     row.appendChild(inpSpeed);
 
-    // Incline input (prosent)
+    // INCLINE
     const inpInc=document.createElement("input");
-    inpInc.type="number"; inpInc.step="0.1"; inpInc.min="-5"; // romslig
+    inpInc.type="number"; inpInc.step="0.1"; inpInc.min="-5";
     inpInc.value=(Number.isFinite(L.inclinePct)?L.inclinePct:STATE.defaultManualInclinePct).toFixed(1);
     inpInc.dataset.rep=String(L.rep);
     inpInc.dataset.kind="incline";
@@ -765,25 +887,35 @@ function renderSpeedInclineEditor(){
 
 function saveEditsAndRefresh(){
   const inputs = $("speedEditor").querySelectorAll("input");
-  const patch = new Map(); // rep -> {speed?,incline?}
+  const patch = new Map(); // rep -> {speed?, incline?}
   for(const i of inputs){
-    const rep=parseInt(i.dataset.rep,10), kind=i.dataset.kind, val=parseFloat(i.value);
+    const rep=parseInt(i.dataset.rep,10);
+    const kind=i.dataset.kind;
+    const val=parseFloat(i.value);
     if(!patch.has(rep)) patch.set(rep,{});
     patch.get(rep)[kind]=val;
   }
+
   for(const L of STATE.laps){
     if(L.type!=="work") continue;
     const p=patch.get(L.rep); if(!p) continue;
-    if(Number.isFinite(p.speed)){ L.speedKmh=round1(p.speed); L.speedSrc="manual_edit"; }
-    if(Number.isFinite(p.incline)){ L.inclinePct=round1(p.incline); L.inclSrc="manual_edit"; }
+    if(Number.isFinite(p.speed)){   L.speedKmh   = round1(p.speed);   L.speedSrc="manual_edit"; }
+    if(Number.isFinite(p.incline)){ L.inclinePct = round1(p.incline); L.inclSrc ="manual_edit"; }
   }
-  finalizeLaps(); renderLapStatsText(); drawResultsChart(); saveCurrentSession(); alert("Endringer lagret.");
+
+  finalizeLaps();
+  renderLapStatsText();
+  drawResultsChart();
+  saveCurrentSession(); // DEL 3
+  alert("Endringer lagret.");
 }
 
-// Tegn pulsstolper + fartslinje (unified y)
+// Puls‑stolper + hvit fartslinje (dobbelt y, unified skala)
 function drawResultsChart(){
-  const canvas=$("resultsCanvas"); const dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1));
-  canvas.width=PNG_W*dpr; canvas.height=PNG_H*dpr; canvas.style.width=PNG_W+"px"; canvas.style.height=PNG_H+"px";
+  const canvas=$("resultsCanvas");
+  const dpr=Math.max(1,Math.min(3,window.devicePixelRatio||1));
+  canvas.width=PNG_W*dpr; canvas.height=PNG_H*dpr;
+  canvas.style.width=PNG_W+"px"; canvas.style.height=PNG_H+"px";
   const ctx=canvas.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
 
   // bakgrunn
@@ -796,90 +928,121 @@ function drawResultsChart(){
   const padL=80, padR=80, padT=80, padB=140;
   const plotW=PNG_W-padL-padR, plotH=PNG_H-padT-padB;
 
-  // skala
   let minVal=999, maxVal=-999;
   for(let i=0;i<work.length;i++){
-    const v=valPulse[i], s=toBpmScaleFromSpeed(valSpeed[i]);
-    minVal=Math.min(minVal,v,s); maxVal=Math.max(maxVal,v,s);
+    const v=valPulse[i];
+    const s=toBpmScaleFromSpeed(valSpeed[i]);
+    minVal=Math.min(minVal, v, s);
+    maxVal=Math.max(maxVal, v, s);
   }
   if(minVal===999){ minVal=0; maxVal=200; }
   if(maxVal-minVal<20) maxVal=minVal+20;
 
   const yToPx=(y)=> padT + (1-(y-minVal)/(maxVal-minVal))*plotH;
 
-  // grid (diskré)
-  ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=1; ctx.font="22px system-ui"; ctx.fillStyle="rgba(255,255,255,0.8)";
-  ctx.textAlign="right"; ctx.textBaseline="middle";
+  // Grid med venstre/høyre akse
+  ctx.strokeStyle="rgba(255,255,255,0.12)";
+  ctx.lineWidth=1;
+  ctx.font="22px system-ui";
+  ctx.fillStyle="rgba(255,255,255,0.8)";
+  ctx.textAlign="right";
+  ctx.textBaseline="middle";
   for(let i=0;i<=6;i++){
     const yVal= maxVal - i*((maxVal-minVal)/6);
     const y=yToPx(yVal);
     ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y); ctx.stroke();
-    ctx.fillText(Math.round(yVal), padL-10, y);               // venstre (bpm)
-    ctx.fillText((Math.round(yVal)/10).toFixed(1), padL+plotW+50, y); // høyre (km/t)
+    ctx.fillText(Math.round(yVal), padL-10, y);                // venstre akse (bpm)
+    ctx.fillText((Math.round(yVal)/10).toFixed(1), padL+plotW+50, y); // høyre akse (km/t)
   }
 
-  // x labels (drag)
-  const n=work.length; const gap=14; const barW=Math.max(20,(plotW - gap*(n-1))/n);
+  // X‑etiketter (drag)
+  const n=work.length, gap=14, barW=Math.max(20,(plotW - gap*(n-1))/n);
   ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillStyle="rgba(255,255,255,0.8)";
   for(let i=0;i<n;i++){
     const x=padL + i*(barW+gap) + barW/2;
     ctx.fillText(String(work[i].rep), x, padT+plotH+10);
   }
 
-  // puls-stolper
+  // Puls-stolper
   ctx.fillStyle = COLOR_PULSE;
   for(let i=0;i<n;i++){
-    const v=valPulse[i]; const x=padL + i*(barW+gap); const y=yToPx(v), y0=yToPx(minVal);
+    const v=valPulse[i];
+    const x=padL + i*(barW+gap);
+    const y=yToPx(v), y0=yToPx(minVal);
     ctx.fillRect(x,y,barW,y0-y);
   }
 
-  // fartslinje (hvit)
-  ctx.strokeStyle = COLOR_SPEED; ctx.lineWidth=4; ctx.beginPath();
+  // Fart-linje
+  ctx.strokeStyle = COLOR_SPEED;
+  ctx.lineWidth=4;
+  ctx.beginPath();
   let started=false;
   for(let i=0;i<n;i++){
-    const s=toBpmScaleFromSpeed(valSpeed[i]); const x=padL + i*(barW+gap) + barW/2; const y=yToPx(s);
-    if(!started){ ctx.moveTo(x,y); started=true; } else ctx.lineTo(x,y);
+    const s=toBpmScaleFromSpeed(valSpeed[i]);
+    const x=padL + i*(barW+gap) + barW/2;
+    const y=yToPx(s);
+    if(!started){ ctx.moveTo(x,y); started=true; }
+    else ctx.lineTo(x,y);
   }
   ctx.stroke();
 
   // Tittel
-  ctx.fillStyle="white"; ctx.font="32px system-ui"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillStyle="white";
+  ctx.font="32px system-ui";
+  ctx.textAlign="left";
+  ctx.textBaseline="top";
   ctx.fillText("Puls (stolper) og Fart (linje)", padL, 20);
 
-  // Summary‑boks nederst
-  ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.fillRect(padL, PNG_H-120, plotW, 100);
-  ctx.fillStyle="white"; ctx.font="20px system-ui"; ctx.textBaseline="middle";
-  const lines = $("summaryText").textContent.split("\n"); let yOff=PNG_H-100;
-  for(const line of lines){ ctx.fillText(line, padL+10, yOff); yOff+=24; }
+  // Summary-boks nederst
+  ctx.fillStyle="rgba(255,255,255,0.12)";
+  ctx.fillRect(padL, PNG_H-120, plotW, 100);
+
+  ctx.fillStyle="white";
+  ctx.font="20px system-ui";
+  ctx.textBaseline="middle";
+  const lines = $("summaryText").textContent.split("\n");
+  let yOff=PNG_H-100;
+  for(const line of lines){
+    ctx.fillText(line, padL+10, yOff);
+    yOff += 24;
+  }
 }
 
 function exportResultsPNG(){
-  const canvas=$("resultsCanvas"); const url=canvas.toDataURL("image/png");
-  const a=document.createElement("a"); a.href=url; a.download=`hr-result-${Date.now()}.png`; a.click();
+  const canvas=$("resultsCanvas");
+  const url=canvas.toDataURL("image/png");
+  const a=document.createElement("a");
+  a.href=url; a.download=`hr-result-${Date.now()}.png`; a.click();
 }
+
 async function shareResultsPNG(){
-  if(!navigator.canShare){ alert("Deling støttes ikke her."); return; }
-  const canvas=$("resultsCanvas"); const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+  if(!navigator.canShare){ alert("Deling ikke støttet her."); return; }
+  const canvas=$("resultsCanvas");
+  const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
   const file=new File([blob],`hr-result-${Date.now()}.png`,{type:"image/png"});
   if(navigator.canShare({files:[file]})) await navigator.share({title:"HR Resultat", files:[file]});
 }
 
+/* ====== SLUTT PÅ DEL 2 / 3 ====== *//* =====================================================================
+   HR-APP — ENKEL, ROBUST, VANILLA JS (ÉN FIL)  —  DEL 3 / 3
+   ===================================================================== */
+
 /* =========================
-   13) EXPORT JSON (SESSION)
+   14) EXPORT JSON (SESSION)
    ========================= */
 
 function buildSessionPayload(existingId=null){
   return {
-    id: existingId || crypto.randomUUID?.() || `id-${Date.now()}`,
+    id: existingId || (crypto.randomUUID?.() || `id-${Date.now()}`),
     createdAt: new Date().toISOString(),
     note: $("note").value.trim(),
     config: {
-      warmupSec: parseInt($("warmupSec").value,10)||0,
-      workSec: parseInt($("workSec").value,10)||0,
-      restSec: parseInt($("restSec").value,10)||0,
-      cooldownSec: parseInt($("cooldownSec").value,10)||0,
-      reps: parseInt($("reps").value,10)||0,
-      simMode: $("simMode").value
+      warmupSec:  parseInt($("warmupSec").value,10)||0,
+      workSec:    parseInt($("workSec").value,10)||0,
+      restSec:    parseInt($("restSec").value,10)||0,
+      cooldownSec:parseInt($("cooldownSec").value,10)||0,
+      reps:       parseInt($("reps").value,10)||0,
+      simMode:    $("simMode").value
     },
     zones: STATE.zones,
     laps: STATE.laps,
@@ -888,50 +1051,105 @@ function buildSessionPayload(existingId=null){
     inclineSamples: STATE.inclineSamples
   };
 }
+
 function exportJSON(){
-  const p=buildSessionPayload(STATE.lastSavedSessionId);
-  const blob=new Blob([JSON.stringify(p,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob); const a=document.createElement("a");
-  a.href=url; a.download=`hr-session-${Date.now()}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500);
+  const p = buildSessionPayload(STATE.lastSavedSessionId);
+  const blob = new Blob([JSON.stringify(p,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `hr-session-${Date.now()}.json`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 400);
 }
 
 /* =========================
-   14) INDEXEDDB (SESSIONS)
+   15) INDEXEDDB (SESSIONS)
    ========================= */
 
-const DB_NAME="hr_app_db_v2", DB_VER=1, STORE="sessions";
+const DB_NAME="hr_app_db_v2";
+const DB_VER = 1;
+const STORE  = "sessions";
+
 function openDB(){
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,DB_VER);
-    req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains(STORE)){ const os=db.createObjectStore(STORE,{keyPath:"id"}); os.createIndex("createdAt","createdAt"); } };
-    req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+    const req=indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db=req.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const os=db.createObjectStore(STORE,{ keyPath:"id" });
+        os.createIndex("createdAt","createdAt");
+      }
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror   = ()=>reject(req.error);
   });
 }
-async function dbPut(s){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readwrite"); tx.objectStore(STORE).put(s); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
-async function dbGet(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readonly"); const r=tx.objectStore(STORE).get(id); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); }); }
-async function dbGetAll(){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readonly"); const r=tx.objectStore(STORE).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
-async function dbDelete(id){ const db=await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,"readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); }); }
+
+async function dbPut(session){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).put(session);
+    tx.oncomplete=()=>res(true);
+    tx.onerror  =()=>rej(tx.error);
+  });
+}
+async function dbGet(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(STORE,"readonly");
+    const r=tx.objectStore(STORE).get(id);
+    r.onsuccess=()=>res(r.result || null);
+    r.onerror  =()=>rej(r.error);
+  });
+}
+async function dbGetAll(){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(STORE,"readonly");
+    const r=tx.objectStore(STORE).getAll();
+    r.onsuccess=()=>res(r.result || []);
+    r.onerror  =()=>rej(r.error);
+  });
+}
+async function dbDelete(id){
+  const db = await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(STORE,"readwrite");
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete=()=>res(true);
+    tx.onerror  =()=>rej(tx.error);
+  });
+}
 
 async function saveCurrentSession(){
   const payload = buildSessionPayload(STATE.lastSavedSessionId);
   STATE.lastSavedSessionId = payload.id;
-  await dbPut(payload); await refreshSessionList();
+  await dbPut(payload);
+  await refreshSessionList();
 }
 
 async function refreshSessionList(){
-  const list=await dbGetAll(); list.sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
-  const sel=$("sessionSelect"); sel.innerHTML="";
-  const opt0=document.createElement("option"); opt0.value=""; opt0.textContent=list.length? "Velg økt…" : "Ingen lagrede økter"; sel.appendChild(opt0);
+  const list = await dbGetAll();
+  list.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
+  const sel = $("sessionSelect");
+  sel.innerHTML = "";
+  const opt0=document.createElement("option");
+  opt0.value=""; opt0.textContent = list.length? "Velg økt…" : "Ingen lagrede økter";
+  sel.appendChild(opt0);
   for(const s of list){
-    const o=document.createElement("option"); o.value=s.id;
     const d=(s.createdAt||"").replace("T"," ").slice(0,16);
-    o.textContent = `${d}${s.note? " · "+s.note:""}`; sel.appendChild(o);
+    const o=document.createElement("option");
+    o.value=s.id; o.textContent=`${d}${s.note? " · "+s.note:""}`;
+    sel.appendChild(o);
   }
 }
 
 async function loadSelectedSession(){
-  const id=$("sessionSelect").value; if(!id) return;
-  const sess=await dbGet(id); if(!sess) return;
+  const id = $("sessionSelect").value;
+  if(!id) return;
+  const sess = await dbGet(id);
+  if(!sess) return;
+
   STATE.lastSavedSessionId = sess.id;
 
   // config
@@ -941,7 +1159,7 @@ async function loadSelectedSession(){
   $("cooldownSec").value = sess.config.cooldownSec;
   $("reps").value        = sess.config.reps;
   $("simMode").value     = sess.config.simMode;
-  $("note").value        = sess.note||"";
+  $("note").value        = sess.note || "";
   STATE.zones            = sess.zones || STATE.zones;
 
   // data
@@ -950,73 +1168,139 @@ async function loadSelectedSession(){
   STATE.speedSamples    = sess.speedSamples || [];
   STATE.inclineSamples  = sess.inclineSamples || [];
 
-  // rebuild window HR
+  // rebuild live window
   const now=Date.now();
-  STATE.windowPoints = STATE.hrSamples.filter(p=>p.ts>=now-HR_WINDOW_MS).map(p=>({x:p.ts,y:p.bpm}));
-  $("pulseValue").textContent = STATE.hrSamples.at(-1)?.bpm ?? "--";
-  $("speedNow").textContent   = round1(STATE.speedSamples.at(-1)?.effectiveKmh ?? 0).toFixed(1);
+  STATE.windowPoints = STATE.hrSamples
+    .filter(p=>p.ts>=now-HR_WINDOW_MS)
+    .map(p=>({x:p.ts, y:p.bpm}));
 
-  finalizeLaps(); renderLapStatsText(); renderZones(); drawLiveChart();
+  $("pulseValue").textContent = STATE.hrSamples.at(-1)?.bpm ?? "--";
+  $("speedNow").textContent   = (STATE.speedSamples.at(-1)?.effectiveKmh ?? 0).toFixed(1);
+  $("inclineNow").textContent = (STATE.inclineSamples.at(-1)?.percent ?? STATE.defaultManualInclinePct).toFixed(1);
+
+  finalizeLaps();
+  renderLapStatsText();
+  renderZones();
+  drawLiveChart();
+
+  // Åpne resultatmodal
   $("resultsModal").classList.remove("hidden");
   $("resultsSub").textContent = `Lastet økt: ${sess.createdAt?.replace("T"," ").slice(0,16) || ""}`;
-  renderSpeedInclineEditor(); drawResultsChart();
+  renderSpeedInclineEditor();
+  drawResultsChart();
   $("summaryText").textContent="(Lastet økt)";
   renderZonesToResults(computeZoneSecondsSessionOnly());
 }
 
 async function deleteSelectedSession(){
-  const id=$("sessionSelect").value; if(!id) return; await dbDelete(id); await refreshSessionList(); alert("Økt slettet.");
+  const id = $("sessionSelect").value;
+  if(!id) return;
+  await dbDelete(id);
+  await refreshSessionList();
+  alert("Økt slettet.");
 }
 
 /* =========================
-   15) CLEAR / EXPORT KNAPPER
+   16) CLEAR / DYNAMISK FELT
    ========================= */
 
 function clearAllData(){
-  STATE.windowPoints=[]; STATE.hrSamples=[]; STATE.speedSamples=[]; STATE.inclineSamples=[];
-  STATE.laps=[]; STATE.currentLap=null; STATE.currentHR=null; STATE.currentSpeed=0; STATE.currentIncline=0;
-  STATE.lastHrTs=0; $("pulseValue").textContent="--"; $("speedNow").textContent="0.0"; $("lastSeen").textContent="--";
-  $("timerClock").textContent="00:00"; $("timerPhase").textContent="Stoppet";
-  renderLapStatsText(); renderZones(); drawLiveChart(); setStatus("Tømte data");
+  STATE.windowPoints=[];
+  STATE.hrSamples=[];
+  STATE.speedSamples=[];
+  STATE.inclineSamples=[];
+
+  STATE.laps=[];
+  STATE.currentLap=null;
+  STATE.currentHR=null;
+  STATE.currentSpeed=0;
+  STATE.currentIncline=0;
+  STATE.lastHrTs=0;
+
+  $("pulseValue").textContent="--";
+  $("speedNow").textContent="0.0";
+  $("inclineNow").textContent=STATE.defaultManualInclinePct.toFixed(1);
+  $("lastSeen").textContent="--";
+  $("dragRemainClock").textContent="00:00";
+  $("totalTimeClock").textContent="00:00";
+  $("timerPhase").textContent="Stoppet";
+
+  renderLapStatsText();
+  renderZones();
+  drawLiveChart();
+  setStatus("Tømte data");
+}
+
+// Legger til «Drag‑stigning (%)» i timerpanelet uten å endre HTML
+function addManualInclineRow(){
+  const panel = document.querySelector(".timerInputs.compact") || document.querySelector(".timerInputs");
+  if(!panel) return;
+
+  // Unngå dobbel
+  if (document.getElementById("dragInclineInput")) return;
+
+  const row = document.createElement("div");
+  row.className = "btnRow tight";
+
+  const group = document.createElement("div");
+  group.style.display = "flex";
+  group.style.gap = "8px";
+  group.style.alignItems = "center";
+
+  const label = document.createElement("label");
+  label.className = "field";
+  label.style.minWidth = "220px";
+  const span = document.createElement("span");
+  span.textContent = "Drag‑stigning (%)";
+  const inp = document.createElement("input");
+  inp.id = "dragInclineInput";
+  inp.type = "number";
+  inp.step = "0.1";
+  inp.value = STATE.defaultManualInclinePct.toFixed(1);
+  label.appendChild(span);
+  label.appendChild(inp);
+
+  const btn = document.createElement("button");
+  btn.className = "secondaryBtn";
+  btn.textContent = "Sett stigning";
+  btn.onclick = ()=>{
+    const v = parseFloat(inp.value);
+    if(Number.isFinite(v)){
+      STATE.defaultManualInclinePct = round1(v);
+      setStatus(`Standard stigning satt: ${STATE.defaultManualInclinePct.toFixed(1)} %`);
+      $("inclineNow").textContent = STATE.defaultManualInclinePct.toFixed(1);
+    }
+  };
+
+  group.appendChild(label);
+  group.appendChild(btn);
+  row.appendChild(group);
+
+  // Plasser før Start/Stopp-raden dersom mulig
+  const allRows = panel.querySelectorAll(".btnRow");
+  if (allRows.length) {
+    panel.insertBefore(row, allRows[0]);
+  } else {
+    panel.appendChild(row);
+  }
 }
 
 /* =========================
-   16) UI-BINDINGS + DYNAMISK INCLINE-FELT
+   17) UI-BINDINGS
    ========================= */
 
-function addManualInclineRow(){
-  // Legg til i timerpanelet (uten å endre HTML): en grid2 rad med input + knapp
-  const panel = document.querySelector(".timerInputs");
-  const row   = document.createElement("div"); row.className="grid2";
-
-  const field1 = document.createElement("label"); field1.className="field";
-  const sp1 = document.createElement("span"); sp1.textContent="Drag‑stigning (%)";
-  const inp = document.createElement("input"); inp.type="number"; inp.step="0.1"; inp.value=STATE.defaultManualInclinePct.toFixed(1); inp.id="dragInclineInput";
-  field1.appendChild(sp1); field1.appendChild(inp);
-
-  const field2 = document.createElement("div"); field2.className="field";
-  const sp2 = document.createElement("span"); sp2.innerHTML="&nbsp;";
-  const btn = document.createElement("button"); btn.className="secondaryBtn"; btn.id="applyDragInclineBtn"; btn.textContent="Sett stigning";
-  field2.appendChild(sp2); field2.appendChild(btn);
-
-  row.appendChild(field1); row.appendChild(field2);
-  panel.insertBefore(row, panel.querySelector(".btnRow")); // før Start/Stopp-knapper
-
-  btn.onclick = ()=>{
-    const v=parseFloat($("dragInclineInput").value);
-    if(Number.isFinite(v)){ STATE.defaultManualInclinePct=round1(v); setStatus(`Standard stigning satt: ${STATE.defaultManualInclinePct.toFixed(1)} %`); }
-  };
-}
-
 function bindUI(){
-  $("connectBtn").onclick     = connectHR;
-  $("treadmillBtn").onclick   = connectTreadmill;
+  // BLE‑kobling
+  $("connectBtn").onclick   = connectHR;
+  $("treadmillBtn").onclick = connectTreadmill;
 
-  $("startBtn").onclick       = startTimer;
-  $("stopBtn").onclick        = stopTimer;
-  $("resetBtn").onclick       = resetTimer;
+  // Timerkontroller
+  $("startBtn").onclick     = startTimer;
+  $("stopBtn").onclick      = stopTimer;
+  $("resetBtn").onclick     = resetTimer;
 
-  $("applyZonesBtn").onclick  = ()=>{
+  // Zoner
+  $("applyZonesBtn").onclick = ()=>{
     STATE.zones = {
       z1: parseInt($("z1").value,10)||110,
       z2: parseInt($("z2").value,10)||130,
@@ -1024,12 +1308,17 @@ function bindUI(){
       z4: parseInt($("z4").value,10)||165,
       z5: parseInt($("z5").value,10)||180
     };
-    renderZones(); drawResultsChart();
+    renderZones();
+    drawResultsChart();
   };
 
+  // Dragfart
   $("applyDragSpeedBtn").onclick = ()=>{
-    if(!STATE.currentLap || STATE.currentLap.type!=="work"){ alert("Endre dragfart når du er i arbeid‑drag."); return; }
-    const v=parseFloat($("dragSpeedInput").value);
+    if(!STATE.currentLap || STATE.currentLap.type!=="work"){
+      alert("Endre dragfart når du er i arbeid‑drag.");
+      return;
+    }
+    const v = parseFloat($("dragSpeedInput").value);
     if(Number.isFinite(v) && v>=0){
       STATE.currentLap.speedKmh = round1(v);
       STATE.currentLap.speedSrc = "manual";
@@ -1037,47 +1326,71 @@ function bindUI(){
     }
   };
 
-  $("addRepBtn").onclick = ()=>{ const r=parseInt($("reps").value,10)||0; $("reps").value=r+1; if(STATE.timerRunning) setStatus("La til drag"); };
+  // Legg til/fjern drag
+  $("addRepBtn").onclick    = ()=>{ const r=parseInt($("reps").value,10)||0; $("reps").value=r+1; if(STATE.timerRunning) setStatus("La til drag"); };
   $("removeRepBtn").onclick = ()=>{ const r=parseInt($("reps").value,10)||0; if(r>1) $("reps").value=r-1; if(STATE.timerRunning) setStatus("Fjernet drag"); };
 
+  // Export & clear
   $("exportBtn").onclick = exportJSON;
   $("clearBtn").onclick  = clearAllData;
 
+  // Sessions
   $("loadSessionBtn").onclick   = loadSelectedSession;
   $("deleteSessionBtn").onclick = deleteSelectedSession;
 
-  // Resultatmodal‑delknapper settes i showResultsModal()
+  // Resultatmodalens knapper bindes i showResultsModal()
 }
 
 /* =========================
-   17) CAPABILITY & INIT
+   18) CAPABILITY & INIT
    ========================= */
 
 function initCapabilityCheck(){
+  hideIOSNotice();
   if(!("bluetooth" in navigator)){
-    $("connectBtn").disabled=true; $("treadmillBtn").disabled=true;
-    if(isIOS()) showIOSNotice(isSafari()? "iOS Safari støtter ikke Web Bluetooth.":"iOS støtter normalt ikke Web Bluetooth.");
-    setStatus("Bluetooth ikke støttet"); return;
-  }
-  $("connectBtn").disabled=false; $("treadmillBtn").disabled=false; setStatus("Klar");
-}
-function showIOSNotice(msg){ const el=$("iosNotice"); el.textContent=msg; el.classList.remove("hidden"); }
-function hideIOSNotice(){ $("iosNotice").classList.add("hidden"); }
+    $("connectBtn").disabled = true;
+    $("treadmillBtn").disabled = true;
 
-async function refreshVersionTag(){ $("versionTag").textContent = APP_VERSION; }
+    if(isIOS()){
+      showIOSNotice(isSafari()
+        ? "iOS Safari støtter ikke Web Bluetooth."
+        : "iOS støtter normalt ikke Web Bluetooth.");
+    }
+    setStatus("Bluetooth ikke støttet");
+    return;
+  }
+  $("connectBtn").disabled=false;
+  $("treadmillBtn").disabled=false;
+  setStatus("Klar");
+}
+
+function setVersionTag(){
+  const v = $("versionTag");
+  if (v) v.textContent = APP_VERSION;
+}
 
 async function init(){
-  await refreshVersionTag();
+  setVersionTag();
   await setupUpdateBanner();
   initCapabilityCheck();
   bindUI();
-  addManualInclineRow(); // Dynamisk felt for stigning i timerpanelet
+  addManualInclineRow();
 
-  // Init zoner i feltene
-  $("z1").value=STATE.zones.z1; $("z2").value=STATE.zones.z2; $("z3").value=STATE.zones.z3; $("z4").value=STATE.zones.z4; $("z5").value=STATE.zones.z5;
+  // Init z-linjer i felter
+  $("z1").value = STATE.zones.z1;
+  $("z2").value = STATE.zones.z2;
+  $("z3").value = STATE.zones.z3;
+  $("z4").value = STATE.zones.z4;
+  $("z5").value = STATE.zones.z5;
 
   await refreshSessionList();
-  renderZones(); renderLapStatsText(); drawLiveChart();
+  renderZones();
+  renderLapStatsText();
+  drawLiveChart();
 }
 
 init().catch(console.warn);
+
+/* =========================
+   SLUTT PÅ DEL 3 / 3 — HELE app.js ER NÅ KOMPLETT
+   ========================= */
