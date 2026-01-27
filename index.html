@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="no">
 <head>
@@ -8,21 +7,21 @@
   <title>HR</title>
   <meta name="theme-color" content="#0b0f14" />
 
-  <!-- Favicons / App icons (GitHub Pages: relative paths) -->
-  <link rel="icon" type="image/png" href="./icons/favicon/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="./icons/favicon/favicon.svg" />
-  <link rel="shortcut icon" href="./icons/favicon/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/favicon/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="HR" />
-  <link rel="manifest" href="./icons/favicon/site.webmanifest" />
+  <!-- Favicons -->
+  ./icons/favicon/favicon-96x96.png
+  ./icons/favicon/favicon.svg
+  ./icons/favicon/favicon.ico
+  ./icons/favicon/apple-touch-icon.png
+  ./icons/favicon/site.webmanifest
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./style.css" />
+  ./style.css
 </head>
 
 <body>
   <header class="appHeader">
-    <!-- UPDATE BANNER (hidden until update available) -->
+
+    <!-- UPDATE BANNER -->
     <div id="updateBanner" class="updateBanner hidden">
       <div class="updateBannerText">
         <div class="updateTitle">Ny versjon tilgjengelig</div>
@@ -37,21 +36,26 @@
     <div class="titleRow">
       <div>
         <div class="title">HR</div>
-        <div class="subtitle">Nettbrett (landskap) · Offline · Puls + fart + resultater</div>
+        <div class="subtitle">Nettbrett · Puls + FTMS fart + Resultater · Offline</div>
       </div>
       <div class="versionTag" id="versionTag">v—</div>
     </div>
   </header>
 
   <main class="dashboard">
-    <!-- LEFT -->
+
+    <!-- LEFT COLUMN -->
     <section class="col colLeft">
+
+      <!-- LIVE METRICS -->
       <div class="card">
         <div class="topRow">
           <button id="connectBtn" class="primaryBtn">Koble til pulsbelte</button>
 
           <div class="liveBox">
             <div class="liveGrid">
+
+              <!-- PULS -->
               <div>
                 <div class="liveLabel">Puls nå</div>
                 <div id="pulseValue" class="liveValue">--</div>
@@ -62,6 +66,7 @@
                 </div>
               </div>
 
+              <!-- FTMS SPEED -->
               <div class="speedBox">
                 <button id="treadmillBtn" class="miniBtn">Mølle: Koble til</button>
                 <div class="speedNow">
@@ -70,6 +75,7 @@
                   <div class="speedUnit">km/t</div>
                 </div>
               </div>
+
             </div>
 
             <div id="iosNotice" class="notice hidden"></div>
@@ -77,24 +83,29 @@
         </div>
       </div>
 
+      <!-- HR CHART (LIVE) -->
       <div class="card">
-        <div class="cardTitle">Puls – siste 15 minutter (Y-akse = min/max ±10)</div>
+        <div class="cardTitle">Puls – siste 15 minutter</div>
         <div class="chartWrap">
           <canvas id="hrCanvas"></canvas>
         </div>
         <div class="hintRow">
           <span class="pill">Grønn linje: puls</span>
-          <span class="pill pill2">Vindu: 15 min</span>
+          <span class="pill pill2">vinduslengde: 15 min</span>
         </div>
       </div>
+
     </section>
 
-    <!-- RIGHT -->
+    <!-- RIGHT COLUMN -->
     <section class="col colRight">
+
+      <!-- TIMER -->
       <div class="card">
-        <div class="cardTitle">Dummy‑timer</div>
+        <div class="cardTitle">Intervalltimer</div>
 
         <div class="timerPanel">
+
           <div class="timerBig">
             <div class="timerLabel">Tid</div>
             <div id="timerClock" class="timerClock">00:00</div>
@@ -102,57 +113,68 @@
           </div>
 
           <div class="timerInputs">
+
+            <!-- DEFAULT 8×6min terskel -->
             <div class="grid4">
               <label class="field">
                 <span>Oppvarming (s)</span>
-                <input id="warmupSec" type="number" min="0" step="10" value="0" />
+                <input id="warmupSec" type="number" value="540" />
               </label>
               <label class="field">
                 <span>Arbeid (s)</span>
-                <input id="workSec" type="number" min="5" step="5" value="60" />
+                <input id="workSec" type="number" value="360" />
               </label>
               <label class="field">
                 <span>Pause (s)</span>
-                <input id="restSec" type="number" min="0" step="5" value="30" />
+                <input id="restSec" type="number" value="60" />
               </label>
               <label class="field">
                 <span>Nedjogg (s)</span>
-                <input id="cooldownSec" type="number" min="0" step="10" value="0" />
+                <input id="cooldownSec" type="number" value="300" />
               </label>
             </div>
 
             <div class="grid3">
               <label class="field">
                 <span>Reps</span>
-                <input id="reps" type="number" min="1" step="1" value="6" />
+                <input id="reps" type="number" value="8" />
               </label>
+
               <label class="field">
                 <span>Simuler puls</span>
                 <select id="simMode">
-                  <option value="auto" selected>Auto (hvis ikke BLE)</option>
-                  <option value="force">Alltid simulér</option>
-                  <option value="off">Aldri simulér</option>
+                  <option value="auto" selected>Auto</option>
+                  <option value="force">Tving</option>
+                  <option value="off">Av</option>
                 </select>
               </label>
+
               <label class="field">
                 <span>Notat</span>
-                <input id="note" type="text" placeholder="(valgfritt)" />
+                <input id="note" type="text" placeholder="valgfritt" />
               </label>
             </div>
 
-            <!-- NEW: drag speed manual input -->
+            <!-- DRAGFART -->
             <div class="grid2">
               <label class="field">
                 <span>Dragfart (km/t)</span>
-                <input id="dragSpeedInput" type="number" min="0" step="0.1" value="0.0" />
+                <input id="dragSpeedInput" type="number" step="0.1" value="0.0" />
               </label>
               <div class="field">
                 <span>&nbsp;</span>
-                <button id="applyDragSpeedBtn" class="secondaryBtn">Sett for dette draget</button>
+                <button id="applyDragSpeedBtn" class="secondaryBtn">Sett</button>
               </div>
             </div>
+
             <div id="dragSpeedHint" class="subHint">
-              Tips: Hvis mølle er koblet til, settes dragfart automatisk til sluttfarten – med mindre du overstyrer.
+              Hvis mølle er koblet til: dragfart = sluttfart (med mindre du overstyrer)
+            </div>
+
+            <!-- ADD/REMOVE DRAG -->
+            <div class="btnRow">
+              <button id="addRepBtn" class="secondaryBtn">➕ Drag</button>
+              <button id="removeRepBtn" class="secondaryBtn danger">➖ Drag</button>
             </div>
 
             <div class="btnRow">
@@ -160,31 +182,33 @@
               <button id="stopBtn" class="secondaryBtn danger" disabled>Stopp</button>
               <button id="resetBtn" class="secondaryBtn ghost">Reset</button>
             </div>
+
           </div>
         </div>
       </div>
 
+      <!-- LAP STATS -->
       <div class="card">
         <div class="cardTitle">Drag-statistikk</div>
-        <div class="subHint">Makspuls = snitt i høyeste 30s-periode per drag</div>
+        <div class="subHint">Makspuls = høyeste 30s-snitt</div>
         <div id="lapStats" class="mono statsText">—</div>
       </div>
 
+      <!-- ZONES -->
       <div class="card">
         <div class="cardTitle">Pulssoner</div>
-        <div class="subHint">BPM‑grenser (S1..S5). S0 er under S1.</div>
+        <div class="subHint">S0 = under S1</div>
 
         <div class="zonesInputs">
           <div class="grid5">
-            <label class="field small"><span>S1 ≥</span><input id="z1" type="number" min="0" step="1" value="110" /></label>
-            <label class="field small"><span>S2 ≥</span><input id="z2" type="number" min="0" step="1" value="130" /></label>
-            <label class="field small"><span>S3 ≥</span><input id="z3" type="number" min="0" step="1" value="150" /></label>
-            <label class="field small"><span>S4 ≥</span><input id="z4" type="number" min="0" step="1" value="165" /></label>
-            <label class="field small"><span>S5 ≥</span><input id="z5" type="number" min="0" step="1" value="180" /></label>
+            <label class="field small"><span>S1 ≥</span><input id="z1" type="number" value="110"></label>
+            <label class="field small"><span>S2 ≥</span><input id="z2" type="number" value="130"></label>
+            <label class="field small"><span>S3 ≥</span><input id="z3" type="number" value="150"></label>
+            <label class="field small"><span>S4 ≥</span><input id="z4" type="number" value="165"></label>
+            <label class="field small"><span>S5 ≥</span><input id="z5" type="number" value="180"></label>
           </div>
-
           <div class="btnRow">
-            <button id="applyZonesBtn" class="secondaryBtn ghost">Oppdater soner</button>
+            <button id="applyZonesBtn" class="secondaryBtn ghost">Oppdater</button>
           </div>
         </div>
 
@@ -200,25 +224,86 @@
         </div>
 
         <div class="divider"></div>
-
         <div class="btnRow">
           <button id="exportBtn" class="secondaryBtn ghost">Eksporter JSON</button>
           <button id="clearBtn" class="secondaryBtn ghost">Tøm data</button>
         </div>
+
       </div>
 
+      <!-- SESSION LIST -->
       <div class="card">
         <div class="cardTitle">Lagrede økter</div>
-        <div class="subHint">Økter lagres lokalt (IndexedDB).</div>
-        <div class="btnRow">
-          <select id="sessionSelect" class="selectWide"></select>
+        <select id="sessionSelect" class="selectWide"></select>
+        <div class="btnRow" style="margin-top:10px;">
           <button id="loadSessionBtn" class="secondaryBtn">Åpne</button>
           <button id="deleteSessionBtn" class="secondaryBtn danger">Slett</button>
         </div>
       </div>
+
     </section>
   </main>
 
-  <script src="./app.js"></script>
+
+  <!-- RESULTS MODAL -->
+  <div id="resultsModal" class="modal hidden">
+    <div class="modalCard">
+
+      <div class="modalHeader">
+        <div>
+          <div class="modalTitle">Resultat</div>
+          <div id="resultsSub" class="modalSub">—</div>
+        </div>
+        <button id="closeResultsBtn" class="miniBtn">Lukk</button>
+      </div>
+
+      <div class="modalGrid">
+
+        <!-- LEFT (GRAPH) -->
+        <div class="modalLeft">
+
+          <div class="modalSectionTitle">Puls og fart per drag</div>
+          <div class="resultsCanvasWrap">
+            <canvas id="resultsCanvas"></canvas>
+          </div>
+
+          <div class="modalSectionTitle">Tid i soner</div>
+          <div class="zoneChart compact">
+            <div class="zoneRow"><div class="zoneLabel">S0</div><div class="zoneBarWrap"><div id="rbarS0" class="zoneBar s0"></div></div><div id="rtimeS0" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S1</div><div class="zoneBarWrap"><div id="rbarS1" class="zoneBar s1"></div></div><div id="rtimeS1" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S2</div><div class="zoneBarWrap"><div id="rbarS2" class="zoneBar s2"></div></div><div id="rtimeS2" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S3</div><div class="zoneBarWrap"><div id="rbarS3" class="zoneBar s3"></div></div><div id="rtimeS3" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S4</div><div class="zoneBarWrap"><div id="rbarS4" class="zoneBar s4"></div></div><div id="rtimeS4" class="zoneTime">—</div></div>
+            <div class="zoneRow"><div class="zoneLabel">S5</div><div class="zoneBarWrap"><div id="rbarS5" class="zoneBar s5"></div></div><div id="rtimeS5" class="zoneTime">—</div></div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT (SUMMARY + EDITOR) -->
+        <div class="modalRight">
+
+          <div class="modalSectionTitle">Oppsummering</div>
+          <div id="summaryText" class="mono statsText">—</div>
+
+          <div class="modalSectionTitle">Fart per drag (redigerbar)</div>
+          <div id="speedEditor" class="speedEditor">—</div>
+
+          <div class="btnRow modalBtns">
+            <button id="saveEditsBtn" class="secondaryBtn">Lagre</button>
+            <button id="exportPngBtn" class="secondaryBtn ghost">PNG</button>
+            <button id="sharePngBtn" class="secondaryBtn ghost">Del</button>
+            <button id="exportJsonBtn2" class="secondaryBtn ghost">JSON</button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- SCRIPT -->
+  ./app.js</script>
+
 </body>
 </html>
