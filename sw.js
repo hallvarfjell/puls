@@ -1,7 +1,7 @@
 
 /* sw.js – HR app (offline-first + update banner flow) */
 
-const CACHE_VERSION = "hr-offline-v1.4.0";
+const CACHE_VERSION = "hr-offline-v1.4.1";
 const CACHE_NAME = `cache-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -21,7 +21,6 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(PRECACHE_URLS);
-    // NOTE: no skipWaiting here; we want user-controlled update via banner
   })());
 });
 
@@ -33,12 +32,9 @@ self.addEventListener("activate", (event) => {
   })());
 });
 
-// Listen for "skip waiting" command from the page
 self.addEventListener("message", (event) => {
   if (!event.data) return;
-  if (event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
+  if (event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -48,13 +44,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // SPA-like navigation: return cached index.html
   if (req.mode === "navigate") {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match("./index.html");
       if (cached) return cached;
-
       try {
         const fresh = await fetch(req);
         cache.put("./index.html", fresh.clone());
@@ -75,7 +69,6 @@ self.addEventListener("fetch", (event) => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(req);
     if (cached) return cached;
-
     try {
       const fresh = await fetch(req);
       cache.put(req, fresh.clone());
