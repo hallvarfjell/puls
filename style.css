@@ -1,4 +1,6 @@
 
+/* style.css – HR app: Landscape-first, stor skrift (nettbrett) */
+
 :root{
   --bg:#0b0f14;
   --border:rgba(255,255,255,.12);
@@ -39,6 +41,8 @@ body{
   -moz-osx-font-smoothing:grayscale;
 }
 
+.hidden{ display:none !important; }
+
 .appHeader{
   position:sticky; top:0; z-index:10;
   padding:12px var(--pad) 14px var(--pad);
@@ -49,7 +53,6 @@ body{
   border-bottom:1px solid rgba(255,255,255,.08);
 }
 
-/* Update banner */
 .updateBanner{
   display:flex;
   align-items:center;
@@ -76,15 +79,12 @@ body{
 }
 .updateBtn.ghost{ background:transparent; border-color:rgba(255,255,255,.10); }
 
-.hidden{ display:none !important; }
-
 .titleRow{
   display:flex;
   align-items:flex-end;
   justify-content:space-between;
   gap:14px;
 }
-
 .title{ font-size:1.45rem; font-weight:900; letter-spacing:.2px; }
 .subtitle{ margin-top:6px; font-size:1.02rem; color:var(--muted); }
 .versionTag{
@@ -105,7 +105,6 @@ body{
   max-width: 1500px;
   margin:0 auto;
 }
-
 .col{ display:flex; flex-direction:column; gap:var(--gap); }
 
 .card{
@@ -124,8 +123,7 @@ body{
 }
 
 .subHint{
-  margin-top:-4px;
-  margin-bottom:10px;
+  margin-top:8px;
   color:var(--muted);
   font-size:.98rem;
 }
@@ -137,7 +135,6 @@ body{
   align-items:stretch;
 }
 
-/* Primary connect button becomes discreet when connected */
 .primaryBtn{
   padding:14px 16px;
   border-radius:14px;
@@ -226,13 +223,7 @@ body{
 }
 .dot{ opacity:.6; }
 
-.speedBox{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  justify-content:space-between;
-  padding-left:6px;
-}
+.speedBox{ display:flex; flex-direction:column; gap:10px; justify-content:space-between; padding-left:6px; }
 .miniBtn{
   padding:10px 12px;
   border-radius:12px;
@@ -316,6 +307,7 @@ canvas{
 
 .grid4{ display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:10px; }
 .grid3{ display:grid; grid-template-columns: 0.7fr 1fr 1.3fr; gap:10px; margin-bottom:10px; }
+.grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:6px; }
 .grid5{ display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; }
 
 .field span{
@@ -339,13 +331,11 @@ input, select{
 
 .divider{ margin:14px 0; height:1px; background:rgba(255,255,255,.08); }
 
-/* Stats */
 .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 .statsText{ font-size: 1.06rem; line-height: 1.38; color: rgba(255,255,255,.92); white-space: pre-wrap; }
 
 /* Zone bars */
 .zoneChart{ display:flex; flex-direction:column; gap:12px; }
-.zoneChart.compact{ gap:10px; }
 .zoneRow{ display:grid; grid-template-columns: 52px 1fr 104px; gap:12px; align-items:center; }
 .zoneLabel{ font-weight:950; }
 .zoneBarWrap{
@@ -365,75 +355,8 @@ input, select{
 .zoneBar.s4{ background: var(--s4); }
 .zoneBar.s5{ background: var(--s5); }
 
-.footnote{ margin:10px 2px 0 2px; font-size:1.0rem; color:var(--muted); line-height:1.35; }
-
-/* Modal */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  padding: 18px;
-  padding-top: calc(18px + env(safe-area-inset-top));
-  overflow:auto;
-  z-index: 50;
-}
-.modalCard{
-  width: min(1400px, 100%);
-  background:linear-gradient(180deg, rgba(18,24,34,.95), rgba(12,16,22,.92));
-  border:1px solid rgba(255,255,255,.14);
-  border-radius: 18px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.45);
-  padding: 14px;
-}
-.modalHeader{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  padding: 4px 4px 10px 4px;
-}
-.modalTitle{ font-size:1.25rem; font-weight:950; }
-.modalSub{ color:var(--muted); font-size:0.98rem; margin-top:4px; }
-.modalGrid{
-  display:grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 14px;
-  align-items:start;
-}
-.modalSectionTitle{
-  font-weight:950;
-  margin: 8px 2px 8px 2px;
-  color: rgba(255,255,255,.88);
-}
-.resultsCanvasWrap{ height: 360px; }
-#resultsCanvas{ height: 360px !important; }
-
-.speedEditor{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  padding: 6px 0;
-}
-.speedRow{
-  display:grid;
-  grid-template-columns: 1fr 160px;
-  gap:10px;
-  align-items:center;
-}
-.speedRowLabel{ font-weight:900; color:rgba(255,255,255,.90); }
-.speedRow input{ text-align:right; }
-
-.modalBtns{ margin-top: 10px; }
-
-/* Responsive fallback */
 @media (max-width: 980px){
   .dashboard{ grid-template-columns: 1fr; }
   .chartWrap{ height: 360px; }
   .timerPanel{ grid-template-columns: 1fr; }
-  .modalGrid{ grid-template-columns: 1fr; }
-  .resultsCanvasWrap{ height: 300px; }
-  #resultsCanvas{ height: 300px !important; }
 }
