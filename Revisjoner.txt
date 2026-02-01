@@ -1,2 +1,41 @@
-REV01
-LA y aksen ha minimumsverdi på 90 bpm og maksimumsverdi på 10 bpm over det den maksimale pulsen har vært i økta.
+Appstruktur
+-	Sticky tynn meny øverst. Alltid synlig. Logo, Knapper for tilkobling av pulsbelte og mølle og klokke. Hamburgermeny til høyre for valg av ulike moduler.
+-	Landskap
+-	Side: Startside/Dashboard
+o	Hurtigknapper for valg av økt (Ved hver økt skal det være ikon for rediger eller slett. Dialogboks for bekreftelse.
+o	Knapp for editor. Tar deg til økteditor
+	Her skal man kunne legge til blokker som
+•	Oppvarming
+•	Serier
+o	Intervaller med fast varighet på drag og pause (skal kunne fylle ut varighet på drag og pauser samt antall repetisjoner). 
+o	Kontinuerlig løping med fartsvariasjoner (legges inn som enkeltdrag uten pauser mellom. Hvert drag skal kunne ha ulik varighet)
+o	Man skal kunne angi intensitet for hvert drag.
+•	Seriepauser (skal automatisk legges inn når man legger til en ny serie.
+•	Nedjogg
+•	Knapper for ulike predefinerte eller tidligere lagrede økter
+•	Knapper for legg til serie, kopier serie
+-	Side: Økt
+o	Skjermen skal ha fire hovedpaneler
+	Øverst til venstre: Felt for puls, fart og stigning. Puls skal komme fra HR-monitor og ha et stort tall (la % av max være i litt mindre tall under). Til høyre for pulstallet skal møllefart og stigning stå stacked. Dersom møllefart og stigning ikke blir hentet fra mølla skal verdien kunne justeres med knapper (+/-) ved siden av dem.
+	Nederst til venstre: Felt for graf. Det skal tegnes en rød strek for puls de siste 15 minutter. X-aksen er tid. Venstre y-akse er pulsverdi. Skalaen på venstre y-akse skal gå fra minimums- og maksimumsverdier av puls de siste 15 minutter. Høyre y-akse skal representere møllefart som tegnes med en skarp gul kontinuerlig linje. Graffeltet skal ha en bakgrunnsfarge som representerer pulssonene slik de er definert i innstillinger. Farger: grå-blå-grønn-gul-oransje-rød. Puls ved LT1 og LT2 skal tegnes inn som to horisontale streker der dette er angitt.
+	Feltet øverst til høyre skal vise aktuelle deler av økta: Navn på fase (For eksempel: Oppvarming, Pause, Seriepause eller Arbeid), Under dette skal intensitet stå (For eksempel «Hardt 85% av HRmax). Under dette skal det stå gjenstående tid for inneværende drag med relativt stor skrift. Under dette skal det være felt for RPE og for merknader. RPE og merknader skal kunne noteres for draget man nettopp har gjennomført (Det er vanskelig å skrive noe midt i et drag) RPE og merknader skal lagres og noteres i resultatarket. Under dette skal aktuelt drag og sett stå, for eksempel «Drag 3/10, Sett 1/3,  Under dette skal det være knapper med ikon for å legge til eller trekke fra drag, skippe drag, (og andre knapper?). Det skal v
+	Feltet nederst til høyre Skal ha statistikk for tid, snittpuls på drag, gjenstående totaltid. Under dette skal det være en stor grønn knapp med ikon for start. Når denne blir trykket starter økta. Knappen endrer farge til oransje og får ikon for pause/gjenoppta. Det skal være en rød knapp med stopp og lagre-ikon (melding ved trykk dersom økt er i gang: «Økt kjører. Avslutte og lagre økta?
+	Autolagring ved fullføring av økt Når økt er ferdig (eller avsluttes/lagres) tas man direkte til ny side med resultatskjerm
+o	Mulighet til å sammenligne med annen økt undervegs?
+-	Side: Resultat
+o	Grafer og interessant statistikk
+	Tid i pulssoner
+	Puls og fartsgraf over hele økta
+	Statistikk for tid, fart, puls, distanse, stigning etc
+o	Det skal være mulig å redigere mye data i etterkant, for eksempel fart og stigning dersom dette har blitt manuelt stilt inn. Man skal også kunne notere generelle merknader for hele økta.
+-	Side: Innstillinger
+o	Pulssoner
+o	Alder
+o	Vekt
+o	LT1/LT2
+o	Maxpuls
+-	Side: Logg
+o	Oversikt over lagrede økter. I oversikten skal det fremgå hvilken type økte det var og man skal kunne sortere ut fra disse. Slik at man kan sammenligne puls og fart på ellers like økter
+o	Eksport på egnet format.
+o	Mulighet til å ta opp gamle økter og se resultatsiden for disse. 
+o	Sammenligne økter?
